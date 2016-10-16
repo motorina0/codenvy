@@ -25,10 +25,12 @@ import org.eclipse.che.plugin.docker.client.ProgressMonitor;
 import org.eclipse.che.plugin.docker.client.connection.DockerConnectionFactory;
 import org.eclipse.che.plugin.docker.client.exception.DockerException;
 import org.eclipse.che.plugin.docker.client.json.ContainerCreated;
+import org.eclipse.che.plugin.docker.client.json.NetworkCreated;
 import org.eclipse.che.plugin.docker.client.json.SystemInfo;
 import org.eclipse.che.plugin.docker.client.params.BuildImageParams;
 import org.eclipse.che.plugin.docker.client.params.CreateContainerParams;
 import org.eclipse.che.plugin.docker.client.params.PullParams;
+import org.eclipse.che.plugin.docker.client.params.network.CreateNetworkParams;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -156,6 +158,17 @@ public class SwarmDockerConnector extends DockerConnector {
             nodes.add(new DockerNode(node[0], node[1]));
         }
         return nodes;
+    }
+
+
+    /**
+     * Uses of bridge mode for all create network.
+     *
+     * @throws IOException
+     *         when problems occurs with docker api calls
+     */
+    public NetworkCreated createNetwork(CreateNetworkParams params) throws IOException {
+        return super.createNetwork(params.withNetwork(params.getNetwork().withDriver("bridge")));
     }
 
     //TODO find better solution
