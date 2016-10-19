@@ -336,6 +336,7 @@ public class OnPremisesIdeApiModule extends AbstractModule {
 
         install(new SystemPermissionsJpaModule());
         install(new com.codenvy.api.permission.server.PermissionsModule());
+        install(new com.codenvy.api.node.server.NodeModule());
         install(new OnPremisesJpaWorkspaceModule());
         install(new com.codenvy.api.workspace.server.WorkspaceApiModule());
 
