@@ -687,7 +687,7 @@ cmd_init() {
                        $IMAGE_INIT #> /dev/null 2>&1
   else
     # docker pull codenvy/bootstrap with current directory as volume mount.
-    docker_exec run -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT #> /dev/null 2>&1
+    docker_exec run --rm -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT #> /dev/null 2>&1
   fi
 
   # After initialization, add codenvy.env with self-discovery.
