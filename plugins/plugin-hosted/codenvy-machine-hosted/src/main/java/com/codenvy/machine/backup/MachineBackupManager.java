@@ -85,8 +85,9 @@ public class MachineBackupManager {
      *         id of workspace that should be backed up
      */
     public void backupWorkspace(final String workspaceId,
-                                final String srcPath,
-                                final String srcAddress) throws ServerException {
+                                final String srcPath,// TODO remove
+                                final String srcAddress,
+                                String port) throws ServerException {
         ReentrantLock lock = workspacesBackupLocks.get(workspaceId);
         // backup workspace only if no backup with cleanup before
         if (lock != null) {
@@ -100,7 +101,7 @@ public class MachineBackupManager {
                         // because it is called after cleanup
                         return;
                     }
-                    backupWorkspace(workspaceId, srcPath, srcAddress, false);
+                    backupWorkspace(workspaceId, srcAddress, port, false);
                 } finally {
                     lock.unlock();
                 }
@@ -113,16 +114,14 @@ public class MachineBackupManager {
     /**
      * Copies workspace files from machine's host to backup storage and remove all files from the source.
      *
-     * @param srcPath
-     *         path to folder that should be backed up
      * @param srcAddress
      *         address of the server from which workspace files should be backed up
      * @param workspaceId
      *         id of workspace that should be backed up
      */
     public void backupWorkspaceAndCleanup(final String workspaceId,
-                                          final String srcPath,
-                                          final String srcAddress) throws ServerException {
+                                          final String srcAddress,
+                                          String port) throws ServerException {
         ReentrantLock lock = workspacesBackupLocks.get(workspaceId);
         if (lock != null) {
             lock.lock();
@@ -132,7 +131,7 @@ public class MachineBackupManager {
                     LOG.error("Backup with cleanup of the workspace {} was invoked several times simultaneously", workspaceId);
                     return;
                 }
-                backupWorkspace(workspaceId, srcPath, srcAddress, true);
+                backupWorkspace(workspaceId, srcAddress, port, true);
             } finally {
                 workspacesBackupLocks.remove(workspaceId);
                 lock.unlock();
@@ -144,14 +143,15 @@ public class MachineBackupManager {
 
     @VisibleForTesting
     void backupWorkspace(final String workspaceId,
-                         final String srcPath,
                          final String srcAddress,
+                         String port,
                          boolean removeSourceOnSuccess) throws ServerException {
         final File destPath = workspaceIdHashLocationFinder.calculateDirPath(backupsRootDir, workspaceId);
 
         CommandLine commandLine = new CommandLine(backupScript,
-                                                  srcPath,
+                                                  "/projects",
                                                   srcAddress,
+                                                  port,
                                                   destPath.toString(),
                                                   Boolean.toString(removeSourceOnSuccess));
 
@@ -175,18 +175,16 @@ public class MachineBackupManager {
      *
      * @param workspaceId
      *         id of workspace that should be copied to machine
-     * @param destPath
-     *         path where files should be copied to
      * @param destAddress
      *         address of the server where workspace should be copied to
      * @throws ServerException
      *         if any exception occurs
      */
     public void restoreWorkspaceBackup(final String workspaceId,
-                                       final String destPath,
                                        final String userId,
                                        final String groupId,
-                                       final String destAddress) throws ServerException {
+                                       final String destAddress,
+                                       String port) throws ServerException {
         boolean restored = false;
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
@@ -204,8 +202,9 @@ public class MachineBackupManager {
 
             CommandLine commandLine = new CommandLine(restoreScript,
                                                       srcPath,
-                                                      destPath,
+                                                      "/projects",
                                                       destAddress,
+                                                      port,
                                                       userId,
                                                       groupId);
 

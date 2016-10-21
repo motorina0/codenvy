@@ -123,8 +123,6 @@ public class HostedMachineProviderImplTest {
                                                  emptySet(),
                                                  emptySet(),
                                                  null,
-                                                 workspaceFolderPathProvider,
-                                                 PROJECT_FOLDER_PATH,
                                                  false,
                                                  false,
                                                  emptySet(),

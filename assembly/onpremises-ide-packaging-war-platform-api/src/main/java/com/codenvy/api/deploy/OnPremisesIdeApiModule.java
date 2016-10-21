@@ -36,6 +36,7 @@ import com.codenvy.auth.sso.client.filter.RequestMethodFilter;
 import com.codenvy.auth.sso.client.filter.UriStartFromRequestFilter;
 import com.codenvy.auth.sso.server.organization.UserCreationValidator;
 import com.codenvy.auth.sso.server.organization.UserCreator;
+import com.codenvy.machine.CodenvyEnvConfigAgentApplier;
 import com.codenvy.machine.WsAgentHealthCheckerWithAuth;
 import com.codenvy.ldap.LdapModule;
 import com.codenvy.ldap.auth.LdapAuthenticationHandler;
@@ -70,6 +71,7 @@ import org.eclipse.che.api.core.rest.ApiInfoService;
 import org.eclipse.che.api.core.rest.CheJsonProvider;
 import org.eclipse.che.api.core.rest.MessageBodyAdapter;
 import org.eclipse.che.api.core.rest.MessageBodyAdapterInterceptor;
+import org.eclipse.che.api.environment.server.EnvConfigAgentApplier;
 import org.eclipse.che.api.environment.server.MachineInstanceProvider;
 import org.eclipse.che.api.environment.server.MachineServiceLinksInjector;
 import org.eclipse.che.api.factory.server.FactoryAcceptValidator;
@@ -378,6 +380,7 @@ public class OnPremisesIdeApiModule extends AbstractModule {
         agentLaunchers.addBinding().to(com.codenvy.machine.launcher.WsAgentWithAuthLauncherImpl.class);
         agentLaunchers.addBinding().to(org.eclipse.che.api.workspace.server.launcher.TerminalAgentLauncherImpl.class);
         agentLaunchers.addBinding().to(org.eclipse.che.api.workspace.server.launcher.SshAgentLauncherImpl.class);
+        agentLaunchers.addBinding().to(com.codenvy.machine.launcher.RsyncAgentLauncherImpl.class);
 
         install(new org.eclipse.che.api.agent.server.AgentModule());
 
@@ -416,5 +419,10 @@ public class OnPremisesIdeApiModule extends AbstractModule {
 
         // install report sender
         install(new ReportModule());
+
+        bind(EnvConfigAgentApplier.class).to(CodenvyEnvConfigAgentApplier.class);
+        Multibinder<String> envMultibinder =
+                Multibinder.newSetBinder(binder(), String.class, Names.named("machine.docker.machine_env"));
+        envMultibinder.addBinding().toProvider(PubKeyEnvProvider.class);
     }
 }
