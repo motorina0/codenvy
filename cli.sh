@@ -24,6 +24,7 @@ cli_init() {
   DEFAULT_CODENVY_HOST=$GLOBAL_HOST_IP
   DEFAULT_CODENVY_CONFIG=$(get_mount_path $PWD)/config
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
+  DEFAULT_CODENVY_BACKUP_FOLDER=$(get_mount_path $PWD)
 
   CODENVY_VERSION=${CODENVY_VERSION:-${DEFAULT_CODENVY_VERSION}}
   CODENVY_UTILITY_VERSION=${CODENVY_UTILITY_VERSION:-${DEFAULT_CODENVY_UTILITY_VERSION}}
@@ -35,6 +36,7 @@ cli_init() {
   
   CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
   CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
+  CODENVY_BACKUP_FOLDER="${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"
 
   CODENVY_CONFIG_MANIFESTS_FOLDER="$CODENVY_CONFIG/manifests"
   CODENVY_CONFIG_MODULES_FOLDER="$CODENVY_CONFIG//modules"
@@ -42,6 +44,9 @@ cli_init() {
   CODENVY_VERSION_FILE="codenvy.ver"
   CODENVY_ENVIRONMENT_FILE="codenvy.env"
   CODENVY_COMPOSE_FILE="docker-compose.yml"
+  CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
+  CODENVY_CONFIG_BACKUP_FILE_NAME="CODENVY_CONFIG_BACKUP.tar"
+  CODENVY_INSTANCE_BACKUP_FILE_NAME="CODENVY_INSTANCE_BACKUP.tar"
 
   # For some situations, Docker requires a path for volume mount which is posix-based.
   # In other cases, the same file needs to be in windows format
@@ -77,6 +82,8 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     destroy [--force]                  Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     config                             Generates a ${CHE_MINI_PRODUCT_NAME} configuration from vars and templates
     download [--force]                 Pulls Docker images to install offline CODENVY_VERSION
+    backup [--force]                   Backups Codenvy configuration and data to ${CODENVY_BACKUP_FOLDER:-${PWD}}
+    restore [--force]                  Restores Codenvy configuration and data from ${CODENVY_BACKUP_FOLDER:-${PWD}}
     info [ --all                       Run all debugging tests
            --server                    Run ${CHE_MINI_PRODUCT_NAME} launcher and server debugging tests
            --networking                Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
@@ -95,6 +102,7 @@ Variables:
     CODENVY_UTILITY_VERSION             Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
     CODENVY_DEVELOPMENT_MODE            If 'on', then has images mount host source folders instead of embedded files
     CODENVY_DEVELOPMENT_REPO            Location of host git repository that contains source code to be mounted
+    CODENVY_BACKUP_FOLDER               Location where backups files of installation are stored. Current folder by default
 "
 }
 
@@ -106,7 +114,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|download|update|info|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|config|download|backup|restore|update|info|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -152,6 +160,14 @@ cli_cli() {
     version)
       shift 
       cmd_version "$@"
+    ;;
+    backup)
+      shift
+      cmd_backup "$@"
+    ;;
+    restore)
+      shift
+      cmd_restore "$@"
     ;;
     update)
       shift
@@ -478,7 +494,6 @@ server_is_booted() {
 }
 
 check_if_booted() {
-  CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
   CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
   wait_until_container_is_running 10 ${CURRENT_CODENVY_SERVER_CONTAINER_ID}
   if ! container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
@@ -623,6 +638,28 @@ get_installed_commitid() {
     echo "<not-installed>"
   else
     cat "${CODENVY_INSTANCE}"/$CODENVY_VERSION_FILE
+  fi
+}
+
+# Usage:
+#   confirm_operation <Warning message> [--force|--no-force]
+confirm_operation() {
+  debug $FUNCNAME
+
+  # Warn user with passed message
+  info "${1}"
+
+  FORCE_OPERATION=${2:-"--no-force"}
+
+  if [ ! "${FORCE_OPERATION}" == "--force" ]; then
+    echo ""
+    read -p "      Are you sure? [N/Y] " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      return 1;
+    else
+      return 0;
+    fi
   fi
 }
 
@@ -808,17 +845,9 @@ cmd_restart() {
 cmd_destroy() {
   debug $FUNCNAME
 
-  info "destroy" "!!! Stopping services and !!! deleting data !!! this is unrecoverable !!!"
-  FORCE_DESTROY=${1:-"--no-force"}
-
-  if [ ! "${FORCE_DESTROY}" == "--force" ]; then
-    echo ""
-    read -p "      Are you sure? [N/y] " -n 1 -r
-    echo    # (optional) move to a new line
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      return;
-    fi
-    echo ""
+  WARNING="destroy !!! Stopping services and !!! deleting data !!! this is unrecoverable !!!"
+  if ! confirm_operation "${WARNING}" "$@"; then
+    return;
   fi
 
   cmd_stop
@@ -884,6 +913,70 @@ cmd_version() {
   else
     get_version_manifest $CODENVY_VERSION
   fi
+}
+
+cmd_backup() {
+  debug $FUNCNAME
+
+  if [[ ! -d "${CODENVY_CONFIG}" ]] || \
+     [[ ! -d "${CODENVY_INSTANCE}" ]]; then
+    error "Codenvy config ${CODENVY_CONFIG} and instance ${CODENVY_INSTANCE} should be existing folders"
+    return;
+  fi
+
+  if [[ ! -d "${CODENVY_BACKUP_FOLDER}" ]]; then
+    error "Backup path ${CODENVY_BACKUP_FOLDER} doesn't point to existing folder"
+    return;
+  fi
+
+  if [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" ]] || \
+     [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" ]]; then
+
+    WARNING="Previous backup will be replaced with the new one, this is unrecoverable !!!"
+    if ! confirm_operation "${WARNING}" "$@"; then
+      info "Codenvy backuping is cancelled"
+      return;
+    fi 
+  fi
+
+  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
+    error "Codenvy should be stopped before backuping"
+    return;
+  fi
+
+  # TODO multiple backups?
+  info "Backuping Codenvy ..."
+  tar -C "${CODENVY_CONFIG}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" .
+  tar -C "${CODENVY_INSTANCE}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" .
+  info "Backuped succesfully !"
+}
+
+cmd_restore() {
+  debug $FUNCNAME
+
+  if [[ -d "${CODENVY_CONFIG}" ]] || \
+     [[ -d "${CODENVY_INSTANCE}" ]]; then
+    
+    WARNING="Current data and configuration will be replaced with a backup, this is unrecoverable !!!"
+    if ! confirm_operation "${WARNING}" "$@"; then
+      info "Codenvy backuping is cancelled"
+      return;
+    fi
+  fi
+
+  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
+    error "Codenvy should be stopped before restoring"
+    return;
+  fi
+
+  info "Recovering Codenvy ..."
+  rm -rf "${CODENVY_INSTANCE}"
+  rm -rf "${CODENVY_CONFIG}"
+  mkdir -p "${CODENVY_CONFIG}"  
+  tar -C "${CODENVY_CONFIG}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}"
+  mkdir -p "${CODENVY_INSTANCE}"
+  tar -C "${CODENVY_INSTANCE}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}"
+  info "Codenvy recovered!"
 }
 
 cli_debug() {
