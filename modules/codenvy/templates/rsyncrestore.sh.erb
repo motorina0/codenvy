@@ -25,5 +25,3 @@ rsync --quiet --delete --partial --links --safe-links --owner --group --recursiv
       --rsync-path="sudo rsync" \
       --chown ${DST_USR_ID}:${DST_GRP_ID} \
       ${SRC_FOLDER} ${DST_HOST}:${DST_FOLDER}
-
-#echo "Doing restore!"

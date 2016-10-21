@@ -18,15 +18,8 @@ REMOVE_ON_SUCCESS=${5=false}
 #fi
 
 rsync --quiet --delete --partial --links --safe-links --recursive --times --human-readable --bwlimit=7000 --executability \
-              --port=${SRC_PORT} \
               --include='.codenvy/' \
               --filter=':- .gitignore' \
               --rsh="ssh -i ${SSH_KEY} -l ${SSH_USER} -o StrictHostKeyChecking=no -p ${SRC_PORT}" \
               --rsync-path="sudo rsync" \
               ${SRC_HOST}:${SRC_FOLDER} ${DST_FOLDER}
-
-if [[ ${REMOVE_ON_SUCCESS} == true ]]; then
-   ssh -i ${SSH_KEY} ${SSH_USER}@${SRC_HOST} "sudo rm -rf ${SRC_FOLDER}"
-fi
-
-#echo "Doing backup"
