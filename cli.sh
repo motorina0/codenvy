@@ -16,7 +16,7 @@ cli_init() {
   GLOBAL_UNAME=$(docker run --rm alpine sh -c "uname -r")
   GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
 
-  DEFAULT_CODENVY_VERSION="hackathon"
+  DEFAULT_CODENVY_VERSION="nightly"
   DEFAULT_CODENVY_UTILITY_VERSION="nightly"
   DEFAULT_CODENVY_CLI_ACTION="help"
   DEFAULT_CODENVY_DEVELOPMENT_MODE="off"
@@ -70,8 +70,8 @@ cli_init() {
   USAGE="
 Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     version                            Installed version and upgrade paths
-    init                               Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
-    start                              Starts ${CHE_MINI_PRODUCT_NAME} server
+    init [--pull | --force]            Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
+    start [--pull | --force]           Starts ${CHE_MINI_PRODUCT_NAME} server
     stop                               Stops ${CHE_MINI_PRODUCT_NAME} server
     restart [--force]                  Restart ${CHE_MINI_PRODUCT_NAME} server
     destroy [--force]                  Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
@@ -353,10 +353,15 @@ update_image_if_not_found() {
 
 update_image() {
   debug $FUNCNAME
+
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
     docker rmi -f $1 > /dev/null
+  fi
+
+  if [ "${1}" == "--pull" ]; then
+    shift
   fi
 
   info "download" "Pulling image $1"
@@ -521,9 +526,9 @@ get_version_registry() {
   info "cli" "Downloading version registry..."
 
   ### Remove these comments once in production
-  #docker rmi -f codenvy/version #> /dev/null 2>&1
-  #docker pull codenvy/version #> /dev/null 2>&1 || true
-  docker_exec run -v "${CODENVY_MANIFEST_DIR}":/copy codenvy/version
+  docker rmi -f $(docker images -q codenvy/version) > /dev/null 2>&1
+  docker pull codenvy/version > /dev/null 2>&1 || true
+  docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy codenvy/version
 }
 
 list_versions(){
@@ -635,7 +640,8 @@ cmd_download() {
   IFS=$'\n'
   for SINGLE_IMAGE in $IMAGE_LIST; do
     VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
-    if [ $FORCE_UPDATE == "--force" ]; then
+    if [[ $FORCE_UPDATE == "--force" ]] ||
+       [[ $FORCE_UPDATE == "--pull" ]]; then
       update_image $FORCE_UPDATE $VALUE_IMAGE
     else
       update_image_if_not_found $VALUE_IMAGE
@@ -653,7 +659,7 @@ cmd_init() {
     fi
   fi
   
-  cmd_download
+  cmd_download $FORCE_UPDATE
   
   if [ -z ${IMAGE_INIT+x} ]; then
     get_image_manifest $CODENVY_VERSION
@@ -675,7 +681,8 @@ cmd_init() {
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
     # docker pull codenvy/bootstrap with current directory as volume mount.
-    docker_exec run -v "${CODENVY_CONFIG}":/copy \
+    docker_exec run --rm \
+                    -v "${CODENVY_CONFIG}":/copy \
                     -v "${CODENVY_DEVELOPMENT_REPO}":/files \
                        $IMAGE_INIT #> /dev/null 2>&1
   else
@@ -693,8 +700,9 @@ cmd_init() {
 }
 
 cmd_config() {
+  FORCE_UPDATE=${1:-"--no-force"}
   if ! is_initialized; then
-    cmd_init
+    cmd_init $FORCE_UPDATE
   fi
 
 #TODO - Update this to use installed version instead of environment variable
@@ -745,14 +753,10 @@ cmd_config() {
 cmd_start() {
   debug $FUNCNAME
   
-  if [ $# -gt 0 ]; then
-    error "${CHE_MINI_PRODUCT_NAME} start: You passed unknown options. Aborting."
-    return
-  fi
-
+  FORCE_UPDATE=${1:-"--no-force"}
   # Always regenerate puppet configuration from environment variable source, whether changed or not.
   # If the current directory is not configured with an .env file, it will initialize
-  cmd_config
+  cmd_config $FORCE_UPDATE
 
   # Begin tests of open ports that we require
   info "start" "Preflight checks"
