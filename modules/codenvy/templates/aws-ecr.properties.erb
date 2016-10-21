@@ -1,0 +1,10 @@
+# ###################################
+# This file is managed by puppet
+# PLEASE DON'T MODIFY BY HAND
+# ###################################
+
+<% unless @docker_registry_aws_ecr_credentials.empty? -%>
+<% @docker_registry_aws_ecr_credentials.split("\n").each do |val| -%>
+docker.registry.aws.<%= val %>
+<% end -%>
+<% end -%>

@@ -1,0 +1,60 @@
+#!/bin/sh
+# how to execute script: curl -sSL http://codenvy.onprem/api/nodes/script | sh
+
+
+BLUE='\033[1;34m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[38;5;220m'
+NC='\033[0m'
+
+REMOTE_IP=###REMOTEIP###
+PROPOSED_IP=###PROPOSEDIP###
+
+
+error() {
+  printf  "${RED}ERROR:${NC} %s\n" "${1}"
+}
+
+has_docker() {
+  hash docker 2>/dev/null && return 0 || return 1
+}
+
+check_docker() {
+  if ! has_docker; then
+    error "Error - Docker not found. Get it at https://docs.docker.com/engine/installation/."
+    error "        Docker can be installed with command 'curl -sSL https://get.docker.com/ | sh'"
+    error "           or 'wget -qO- https://get.docker.com/ | sh'"
+    return 1;
+  fi
+
+  if ! docker ps > /dev/null 2>&1; then
+    output=$(docker ps)
+    error "Error - Docker not installed properly: ${output}"
+    return 1;
+  fi
+
+}
+
+check_docker
+
+#login 
+echo "Please enter credentials for Workspace Master:"
+read -p "login:" </dev/tty AUTH_NAME
+read -p "password:" </dev/tty AUTH_PASSWORD
+
+GRAB_TOKEN=$(curl --fail -s -H "Content-Type: application/json" -X POST -d "{\"username\":\"${AUTH_NAME}\", \"password\":\"${AUTH_PASSWORD}\"}" http://${REMOTE_IP}/api/auth/login)
+if [ "$?" != "0" ]; then
+  echo "Unable to get auth token. Check your login and password."
+  return 1
+fi 
+
+# extract token
+TOKEN=$(echo ${GRAB_TOKEN} | sed 's/.*"value"\s*:\s*"\([^"]*\)*".*/\1/')
+
+echo "Please enter this host public IP that will be registered"
+read -p "IP:" </dev/tty PROPOSED_IP
+
+# register node by using token. 
+curl -H "Content-Type: application/json" -X POST -d "{\"ip\" : \"${PROPOSED_IP}\"}" http://${REMOTE_IP}/api/nodes?token=$TOKEN
+echo ""
