@@ -21,6 +21,7 @@ cli_init() {
   DEFAULT_CODENVY_CLI_ACTION="help"
   DEFAULT_CODENVY_DEVELOPMENT_MODE="off"
   DEFAULT_CODENVY_DEVELOPMENT_REPO=$(get_mount_path $PWD)
+  DEFAULT_CODENVY_DEVELOPMENT_TOMCAT=$(ls $DEFAULT_CODENVY_DEVELOPMENT_REPO/assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone-*)
   DEFAULT_CODENVY_HOST=$GLOBAL_HOST_IP
   DEFAULT_CODENVY_CONFIG=$(get_mount_path $PWD)/config
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
@@ -31,6 +32,7 @@ cli_init() {
   CODENVY_CLI_ACTION=${CODENVY_CLI_ACTION:-${DEFAULT_CODENVY_CLI_ACTION}}
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO:-$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})}
+  CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT:-$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT})}
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
   CODENVY_MANIFEST_DIR=$(get_mount_path ~/."${CHE_MINI_PRODUCT_NAME}"/manifests)
   
@@ -901,10 +903,7 @@ cmd_upgrade() {
 cmd_version() {
   debug $FUNCNAME
 
-  # 1. CODENVY_VERSION is set to: x
-  # 2. CODENVY_INSTANCE's version is set to:
-  # 3. CLI_VERSION is:
-  # Check to see version for current environment variable
+  error "!!! this information - experimental - upgrade not yet avail !!!"
   printf "Codenvy:\n"
   printf "  Version:      %s\n" $(get_installed_version)
   printf "  Installed:    %s\n" $(get_installed_installdate)
