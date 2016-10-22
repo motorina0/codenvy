@@ -116,6 +116,26 @@ The CLI is self-updating. If you modify the `cli.sh` companion script or change 
 `codenvy start`
 This will install a Codenvy configuration, download Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. A successful start should result with:
 
+```
+INFO: (codenvy cli): Downloading cli-latest
+INFO: (codenvy cli): Checking registry for version 'nightly' images
+INFO: (codenvy config): Generating codenvy configuration...
+INFO: (codenvy config): Customizing docker-compose for Windows
+INFO: (codenvy start): Preflight checks
+         port 80:  [OK]
+         port 443: [OK]
+
+INFO: (codenvy start): Starting containers...
+INFO: (codenvy start): Server logs at "docker logs -f codenvy_codenvy_1"
+INFO: (codenvy start): Server booting...
+INFO: (codenvy start): Booted and reachable
+INFO: (codenvy start): Use: http://10.0.75.2
+INFO: (codenvy start): API: http://10.0.75.2/swagger
+```
+The default administrative login is:
+user: `admin`
+pass: `password`
+
 ## Logs and User Data
 When Codenvy initializes itself, it creates a `/instance` folder in the directory to store logs, user data, the database, and instance-specific configuration. Codenvy's containers are started with `host:container` volume bindings to mount this information into and out of the containers that require it. You can save the `/instance` folder as a backup for an entire Codenvy instance. 
 
