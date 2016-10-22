@@ -42,7 +42,7 @@ cli_init() {
   CODENVY_BACKUP_FOLDER="${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"
 
   CODENVY_CONFIG_MANIFESTS_FOLDER="$CODENVY_CONFIG/manifests"
-  CODENVY_CONFIG_MODULES_FOLDER="$CODENVY_CONFIG//modules"
+  CODENVY_CONFIG_MODULES_FOLDER="$CODENVY_CONFIG/modules"
 
   CODENVY_VERSION_FILE="codenvy.ver"
   CODENVY_ENVIRONMENT_FILE="codenvy.env"
@@ -157,7 +157,7 @@ cli_cli() {
       cmd_destroy "$@"
     ;;
     upgrade)
-      shift 
+      shift
       cmd_upgrade "$@"
     ;;
     version)
@@ -261,6 +261,12 @@ get_docker_host_ip() {
    ;;
   esac
 
+  log "docker run --rm --net host \
+            alpine sh -c \
+            \"ip a show ${NETWORK_IF}\" | \
+            grep 'inet ' | \
+            cut -d/ -f1 | \
+            awk '{ print \$2}'"
   docker run --rm --net host \
             alpine sh -c \
             "ip a show ${NETWORK_IF}" | \
@@ -348,8 +354,10 @@ has_docker_for_windows_client(){
 docker_exec() {
   debug $FUNCNAME
   if has_docker_for_windows_client; then
+    log "MSYS_NO_PATHCONV=1 docker.exe \"$@\""
     MSYS_NO_PATHCONV=1 docker.exe "$@"
   else
+    log "$(which docker) \$@\""
     "$(which docker)" "$@"
   fi
 }
@@ -368,13 +376,13 @@ has_env_variables() {
 update_image_if_not_found() {
   debug $FUNCNAME
 
-  printf "${GREEN}INFO:${NC} (${CHE_MINI_PRODUCT_NAME} download): Checking for image '$1'..."
+  text "${GREEN}INFO:${NC} (${CHE_MINI_PRODUCT_NAME} download): Checking for image '$1'..."
   CURRENT_IMAGE=$(docker images -q "$1")
   if [ "${CURRENT_IMAGE}" == "" ]; then
-    printf "not found\n"
+    text "not found\n"
     update_image $1
   else
-    printf "found\n"
+    text "found\n"
   fi
 }
 
@@ -384,7 +392,8 @@ update_image() {
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
-    docker rmi -f $1 > /dev/null
+    log "docker rmi -f $1 >> \"${LOGS}\""
+    docker rmi -f $1 >> "${LOGS}"
   fi
 
   if [ "${1}" == "--pull" ]; then
@@ -392,9 +401,9 @@ update_image() {
   fi
 
   info "download" "Pulling image $1"
-  echo ""
+  text "\n"
   docker pull $1
-  echo ""
+  text "\n"
 }
 
 has_che_properties() {
@@ -411,7 +420,9 @@ has_che_properties() {
 generate_temporary_che_properties_file() {
   debug $FUNCNAME
   if has_che_properties; then
+    log "test -d ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf || mkdir -p ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf"
     test -d ~/."${CHE_MINI_PRODUCT_NAME}"/conf || mkdir -p ~/."${CHE_MINI_PRODUCT_NAME}"/conf
+    log "touch ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf/che.properties"
     touch ~/."${CHE_MINI_PRODUCT_NAME}"/conf/che.properties
 
     # Get list of properties
@@ -422,16 +433,16 @@ generate_temporary_che_properties_file() {
       PROPERTY_WITHOUT_PREFIX=${PROPERTY#CHE_PROPERTY_}
 
       # NAME=value ==> separate name / value into different variables
-      PROPERTY_NAME=$(echo $PROPERTY_WITHOUT_PREFIX | cut -f1 -d=)
-      PROPERTY_VALUE=$(echo $PROPERTY_WITHOUT_PREFIX | cut -f2 -d=)
+      PROPERTY_NAME=$(echo ${PROPERTY_WITHOUT_PREFIX} | cut -f1 -d=)
+      PROPERTY_VALUE=$(echo ${PROPERTY_WITHOUT_PREFIX} | cut -f2 -d=)
 
       # Replace "_" in names to periods
-      CONVERTED_PROPERTY_NAME=$(echo "$PROPERTY_NAME" | tr _ .)
+      CONVERTED_PROPERTY_NAME=$(echo "${PROPERTY_NAME}" | tr _ .)
 
       # Replace ".." in names to "_"
       SUPER_CONVERTED_PROPERTY_NAME="${CONVERTED_PROPERTY_NAME//../_}"
 
-      echo "$SUPER_CONVERTED_PROPERTY_NAME=$PROPERTY_VALUE" >> ~/."${CHE_MINI_PRODUCT_NAME}"/conf/che.properties
+      echo "${SUPER_CONVERTED_PROPERTY_NAME}=${PROPERTY_VALUE}" >> ~/."${CHE_MINI_PRODUCT_NAME}"/conf/che.properties
     done
   fi
 }
@@ -448,7 +459,8 @@ contains() {
 }
 
 port_open(){
-  netstat -an | grep 0.0.0.0:$1 >/dev/null
+  log "netstat -an | grep 0.0.0.0:$1 >> \"${LOGS}\" 2>&1"
+  netstat -an | grep 0.0.0.0:$1 >> "${LOGS}" 2>&1
   NETSTAT_EXIT=$?
 
   if [ $NETSTAT_EXIT = 0 ]; then
@@ -468,6 +480,7 @@ container_exist_by_name(){
 }
 
 get_server_container_id() {
+  log "docker inspect -f '{{.Id}}' ${1}"
   docker inspect -f '{{.Id}}' ${1}
 }
 
@@ -476,6 +489,7 @@ wait_until_container_is_running() {
 
   ELAPSED=0
   until container_is_running ${2} || [ ${ELAPSED} -eq "${CONTAINER_START_TIMEOUT}" ]; do
+    log "sleep 1"
     sleep 1
     ELAPSED=$((ELAPSED+1))
   done
@@ -494,10 +508,12 @@ wait_until_server_is_booted () {
 
   ELAPSED=0
   until server_is_booted ${2} || [ ${ELAPSED} -eq "${SERVER_BOOT_TIMEOUT}" ]; do
+    log "sleep 2"
     sleep 2
     # Total hack - having to restart haproxy for some reason on windows
     if is_docker_for_windows || is_docker_for_mac; then
-      docker restart codenvy_haproxy_1 > /dev/null
+      log "docker restart codenvy_haproxy_1 >> \"${LOGS}\" 2>&1"
+      docker restart codenvy_haproxy_1 >> "${LOGS}" 2>&1
     fi
     ELAPSED=$((ELAPSED+1))
   done
@@ -505,7 +521,7 @@ wait_until_server_is_booted () {
 
 server_is_booted() {
   HTTP_STATUS_CODE=$(curl -I http://$CODENVY_HOST:80/api/ \
-                     -s -o /dev/null --write-out "%{http_code}")
+                     -s -o "${LOGS}" --write-out "%{http_code}")
   if [ "${HTTP_STATUS_CODE}" = "200" ]; then
     return 0
   else
@@ -561,24 +577,23 @@ get_version_registry() {
   info "cli" "Downloading version registry..."
 
   ### Remove these comments once in production
-  docker pull codenvy/version > /dev/null 2>&1 || true
+  log "docker pull codenvy/version >> \"${LOGS}\" 2>&1 || true"
+  docker pull codenvy/version >> "${LOGS}" 2>&1 || true
+  log "docker_exec run --rm -v \"${CODENVY_MANIFEST_DIR}\":/copy codenvy/version"
   docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy codenvy/version
 }
 
 list_versions(){
   # List all subdirectories and then print only the file name
   for version in "${CODENVY_MANIFEST_DIR}"/* ; do
-    echo " ${version##*/}"
+    text " ${version##*/}\n"
   done
 }
 
 version_error(){
-  echo ""
-  echo "We could not find version '$1'. Available versions:"
+  text "\nWe could not find version '$1'. Available versions:\n"
   list_versions
-  echo ""
-  echo "Set CODENVY_VERSION=<version> and rerun."
-  echo ""
+  text "\nSet CODENVY_VERSION=<version> and rerun.\n\n"
 }
 
 ### Returns the list of Codenvy images for a particular version of Codenvy
@@ -593,6 +608,7 @@ get_image_manifest() {
   IMAGE_LIST=$(cat "$CODENVY_MANIFEST_DIR"/$1/images)
   IFS=$'\n'
   for SINGLE_IMAGE in $IMAGE_LIST; do
+    log "eval $SINGLE_IMAGE"
     eval $SINGLE_IMAGE
   done
 }
@@ -603,11 +619,11 @@ get_upgrade_manifest() {
   while IFS='' read -r line || [[ -n "$line" ]]; do
     VER=$(echo $line | cut -d ' ' -f1)
     UPG=$(echo $line | cut -d ' ' -f2)
-    printf "  "
-    printf "%s" $VER
-    for i in `seq 1 $((25-${#VER}))`; do printf " "; done    
-    printf "%s" $UPG
-    printf "\n"
+    text "  "
+    text "%s" $VER
+    for i in `seq 1 $((25-${#VER}))`; do text " "; done
+    text "%s" $UPG
+    text "\n"
   done < "$CODENVY_MANIFEST_DIR"/upgrades
 }
 
@@ -616,13 +632,13 @@ get_version_manifest() {
     VER=$(echo $line | cut -d ' ' -f1)
     CHA=$(echo $line | cut -d ' ' -f2)
     UPG=$(echo $line | cut -d ' ' -f3)
-    printf "  "
-    printf "%s" $VER
-    for i in `seq 1 $((25-${#VER}))`; do printf " "; done    
-    printf "%s" $CHA
-    for i in `seq 1 $((18-${#CHA}))`; do printf " "; done    
-    printf "%s" $UPG
-    printf "\n"
+    text "  "
+    text "%s" $VER
+    for i in `seq 1 $((25-${#VER}))`; do text " "; done
+    text "%s" $CHA
+    for i in `seq 1 $((18-${#CHA}))`; do text " "; done
+    text "%s" $UPG
+    text "\n"
   done < "$CODENVY_MANIFEST_DIR"/versions
 }
 
@@ -653,10 +669,9 @@ confirm_operation() {
   FORCE_OPERATION=${2:-"--no-force"}
 
   if [ ! "${FORCE_OPERATION}" == "--force" ]; then
-    echo ""
+    text "\n"
     read -p "      Are you sure? [N/y] " -n 1 -r
-    echo ""
-    echo ""
+    text "\n\n"
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       return 1;
     else
@@ -705,7 +720,9 @@ cmd_init() {
   fi
 
   info "init" "Installing configuration"
+  log "mkdir -p \"${CODENVY_CONFIG}\""
   mkdir -p "${CODENVY_CONFIG}"
+  log "mkdir -p \"${CODENVY_INSTANCE}\""
   mkdir -p "${CODENVY_INSTANCE}"
 
   if [ ! -w "${CODENVY_CONFIG}" ]; then
@@ -730,6 +747,7 @@ cmd_init() {
   fi
 
   # After initialization, add codenvy.env with self-discovery.
+  log "touch \"${REFERENCE_ENVIRONMENT_FILE}\""
   touch "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_HOST=${CODENVY_HOST}" > "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_SWARM_NODES=${CODENVY_HOST}:23750" >> "${REFERENCE_ENVIRONMENT_FILE}"
@@ -759,12 +777,12 @@ cmd_config() {
   fi
 
   # If the CODENVY_VERSION set by an environment variable does not match the value of
-  # the codenvy.ver file of the installed instance, then do not proceed as there is a 
+  # the codenvy.ver file of the installed instance, then do not proceed as there is a
   # confusion between what the user has set and what the instance expects.
   INSTALLED_VERSION=$(get_installed_version)
   if [[ $CODENVY_VERSION != $INSTALLED_VERSION ]]; then
     info "config" "CODENVY_VERSION=$CODENVY_VERSION does not match ${CODENVY_ENVIRONMENT_FILE}=$INSTALLED_VERSION. Aborting."
-    return 1      
+    return 1
   fi
 
   if [ -z ${IMAGE_PUPPET+x} ]; then
@@ -773,7 +791,16 @@ cmd_config() {
 
   info "config" "Generating codenvy configuration..."
   # Generate codenvy configuration using puppet
-  # Note - bug in docker requires relative path for env, not absolute 
+  # Note - bug in docker requires relative path for env, not absolute
+  log "docker_exec run -it --rm \
+                  --env-file=\"${REFERENCE_ENVIRONMENT_FILE}\" \
+                  -v \"${CODENVY_INSTANCE}\":/opt/codenvy:rw \
+                  -v \"${CODENVY_CONFIG_MANIFESTS_FOLDER}\":/etc/puppet/manifests:ro \
+                  -v \"${CODENVY_CONFIG_MODULES_FOLDER}\":/etc/puppet/modules:ro \
+                      $IMAGE_PUPPET \
+                          apply --modulepath \
+                                /etc/puppet/modules/ \
+                                /etc/puppet/manifests/codenvy.pp >> \"${LOGS}\""
   docker_exec run -it --rm \
                   --env-file="${REFERENCE_ENVIRONMENT_FILE}" \
                   -v "${CODENVY_INSTANCE}":/opt/codenvy:rw \
@@ -782,7 +809,7 @@ cmd_config() {
                       $IMAGE_PUPPET \
                           apply --modulepath \
                                 /etc/puppet/modules/ \
-                                /etc/puppet/manifests/codenvy.pp > /dev/null
+                                /etc/puppet/manifests/codenvy.pp >> "${LOGS}"
 
 
   # Replace certain environment file lines with wind
@@ -799,15 +826,16 @@ cmd_config() {
     sed "s|^.*codenvy\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_CODENVY}\'|" -i "${REFERENCE_COMPOSE_FILE}"
     sed "s|^.*postgresql\/data.*$|\ \ \ \ \ \ \-\ \'codenvy-postgresql-volume\:\/var\/lib\/postgresql\/data\:Z\'|" -i "${REFERENCE_COMPOSE_FILE}"
 
-    echo '' >> "${REFERENCE_COMPOSE_FILE}"
-    echo 'volumes:' >> "${REFERENCE_COMPOSE_FILE}"
-    echo '  codenvy-postgresql-volume:' >> "${REFERENCE_COMPOSE_FILE}"
-    echo '     external: true' >> "${REFERENCE_COMPOSE_FILE}"
+    text '' >> "${REFERENCE_COMPOSE_FILE}\n"
+    text 'volumes:' >> "${REFERENCE_COMPOSE_FILE}\n"
+    text '  codenvy-postgresql-volume:' >> "${REFERENCE_COMPOSE_FILE}\n"
+    text '     external: true' >> "${REFERENCE_COMPOSE_FILE}\n"
 
     # On Windows, it is not possible to volume mount postgres data folder directly
     # This creates a named volume which will store postgres data in docker for win VM
     # TODO - in future, we can write synchronizer utility to copy data from win VM to host
-    docker volume create --name=codenvy-postgresql-volume > /dev/null
+    log "docker volume create --name=codenvy-postgresql-volume >> \"${LOGS}\""
+    docker volume create --name=codenvy-postgresql-volume >> "${LOGS}"
   fi;
 }
 
@@ -837,18 +865,19 @@ cmd_start() {
 
   # Begin tests of open ports that we require
   info "start" "Preflight checks"
-  printf "         port 80:  $(port_open 80 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
-  printf "         port 443: $(port_open 443 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
+  text   "         port 80:  $(port_open 80 && echo \"${GREEN}[OK]${NC}\" || echo \"${RED}[ALREADY IN USE]${NC}\") \n"
+  text   "         port 443: $(port_open 443 && echo \"${GREEN}[OK]${NC}\" || echo \"${RED}[ALREADY IN USE]${NC}\") \n"
   if ! $(port_open 80) || ! $(port_open 443); then
     error "Ports required to run codenvy are used by another program. Aborting..."
     return 1;
   fi
-  printf "\n"
+  text "\n"
   
   # Start Codenvy
   # Note bug in docker requires relative path, not absolute path to compose file
   info "start" "Starting containers..."
-  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy up -d > /dev/null 2>&1
+  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy up -d >> \"${LOGS}\" 2>&1"
+  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy up -d >> "${LOGS}" 2>&1
   check_if_booted
 }
 
@@ -861,10 +890,12 @@ cmd_stop() {
   fi
 
   info "stop" "Stopping containers..."
-  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy stop > /dev/null 2>&1 || true
+  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy stop >> \"${LOGS}\" 2>&1 || true"
+  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy stop >> "${LOGS}" 2>&1 || true
   info "stop" "Removing containers"
-  yes | docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy rm > /dev/null 2>&1 || true
-#  docker rm $(docker ps -aq --filter name=${DOCKER_CONTAINER_NAME_PREFIX}) > /dev/null 2>&1 || true 
+  log "yes | docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy rm >> \"${LOGS}\" 2>&1 || true"
+  yes | docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy rm >> "${LOGS}" 2>&1 || true
+#  docker rm $(docker ps -aq --filter name=${DOCKER_CONTAINER_NAME_PREFIX}) >> "${LOGS}" 2>&1 || true
 }
 
 cmd_restart() {
@@ -878,7 +909,8 @@ cmd_restart() {
     cmd_start
   else
     info "restart" "Restarting services..."
-    docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart > /dev/null 2>&1
+    log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy restart >> \"${LOGS}\" 2>&1"
+    docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart >> "${LOGS}" 2>&1
     check_if_booted
   fi
 }
@@ -895,9 +927,11 @@ cmd_destroy() {
   info "destroy" "Deleting instance"
   rm -rf "${CODENVY_INSTANCE}"
   if has_docker_for_windows_client; then
-    docker volume rm codenvy-postgresql-volume > /dev/null 2>&1 || true
+    log "docker volume rm codenvy-postgresql-volume >> \"${LOGS}\" 2>&1 || true"
+    docker volume rm codenvy-postgresql-volume >> "${LOGS}" 2>&1 || true
   fi
   info "destroy" "Deleting config"
+  log "rm -rf \"${CODENVY_CONFIG}\""
   rm -rf "${CODENVY_CONFIG}"
 }
 
@@ -910,21 +944,21 @@ cmd_version() {
   debug $FUNCNAME
 
   error "!!! this information - experimental - upgrade not yet avail !!!"
-  printf "Codenvy:\n"
-  printf "  Version:      %s\n" $(get_installed_version)
-  printf "  Installed:    %s\n" $(get_installed_installdate)
-  printf "  CLI version:  $CHE_CLI_VERSION\n"
+  text "Codenvy:\n"
+  text "  Version:      %s\n" $(get_installed_version)
+  text "  Installed:    %s\n" $(get_installed_installdate)
+  text "  CLI version:  $CHE_CLI_VERSION\n"
 
   if is_initialized; then
-    printf "\n"
-    printf "Upgrade Options:\n"
-    printf "  INSTALLED VERSION        UPRADEABLE TO\n"
+    text "\n"
+    text "Upgrade Options:\n"
+    text "  INSTALLED VERSION        UPRADEABLE TO\n"
     get_upgrade_manifest $(get_installed_version)
   fi
 
-  printf "\n"
-  printf "Available:\n"
-  printf "  VERSION                  CHANNEL           UPGRADEABLE FROM\n"
+  text "\n"
+  text "Available:\n"
+  text "  VERSION                  CHANNEL           UPGRADEABLE FROM\n"
   if is_initialized; then
     get_version_manifest $(get_installed_version)
   else
@@ -956,12 +990,11 @@ cmd_backup() {
     fi 
   fi
 
-  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
+  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" >> "${LOGS}" 2>&1; then
     error "Codenvy is running. Stop before performing a backup. Aborting."
     return;
   fi
 
-  # TODO multiple backups?
   info "backup" "Saving configuration..."
   tar -C "${CODENVY_CONFIG}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" .
   info "backup" "Saving instance data..."
@@ -980,7 +1013,7 @@ cmd_restore() {
     fi
   fi
 
-  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
+  if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" >> "${LOGS}" 2>&1; then
     error "Codenvy is running. Stop before performing a restore. Aborting"
     return;
   fi
@@ -1036,19 +1069,19 @@ cmd_debug() {
   info "CODENVY_DEVELOPMENT_MODE  = ${CODENVY_DEVELOPMENT_MODE}"
   info "CODENVY_DEVELOPMENT_REPO  = ${CODENVY_DEVELOPMENT_REPO}"
   info "CODENVY_BACKUP_FOLDER     = ${CODENVY_BACKUP_FOLDER}"
-  info ""  
+  info ""
   info "-----------  PLATFORM INFO  -----------"
 #  info "CLI DEFAULT PROFILE       = $(has_default_profile && echo $(get_default_profile) || echo "not set")"
   info "CLI_VERSION               = ${CHE_CLI_VERSION}"
   info "DOCKER_INSTALL_TYPE       = $(get_docker_install_type)"
   info "DOCKER_HOST_IP            = ${GLOBAL_GET_DOCKER_HOST_IP}"
-  info "IS_NATIVE                 = $(is_native && echo "YES" || echo "NO")"
-  info "IS_WINDOWS                = $(has_docker_for_windows_client && echo "YES" || echo "NO")"
-  info "IS_DOCKER_FOR_WINDOWS     = $(is_docker_for_windows && echo "YES" || echo "NO")"
-  info "HAS_DOCKER_FOR_WINDOWS_IP = $(has_docker_for_windows_client && echo "YES" || echo "NO")"
-  info "IS_DOCKER_FOR_MAC         = $(is_docker_for_mac && echo "YES" || echo "NO")"
-  info "IS_BOOT2DOCKER            = $(is_boot2docker && echo "YES" || echo "NO")"
-  info "IS_MOBY_VM                = $(is_moby_vm && echo "YES" || echo "NO")"
+  info "IS_NATIVE                 = $(is_native && echo \"YES\" || echo \"NO\")"
+  info "IS_WINDOWS                = $(has_docker_for_windows_client && echo \"YES\" || echo \"NO\")"
+  info "IS_DOCKER_FOR_WINDOWS     = $(is_docker_for_windows && echo \"YES\" || echo \"NO\")"
+  info "HAS_DOCKER_FOR_WINDOWS_IP = $(has_docker_for_windows_client && echo \"YES\" || echo \"NO\")"
+  info "IS_DOCKER_FOR_MAC         = $(is_docker_for_mac && echo \"YES\" || echo \"NO\")"
+  info "IS_BOOT2DOCKER            = $(is_boot2docker && echo \"YES\" || echo \"NO\")"
+  info "IS_MOBY_VM                = $(is_moby_vm && echo \"YES\" || echo \"NO\")"
   info ""
 }
 
@@ -1064,7 +1097,8 @@ cmd_network() {
   info "--------   CONNECTIVITY TEST   --------"
   info "---------------------------------------"
   # Start a fake workspace agent
-  docker_exec run -d -p 12345:80 --name fakeagent alpine httpd -f -p 80 -h /etc/ > /dev/null
+  log "docker_exec run -d -p 12345:80 --name fakeagent alpine httpd -f -p 80 -h /etc/ >> \"${LOGS}\""
+  docker_exec run -d -p 12345:80 --name fakeagent alpine httpd -f -p 80 -h /etc/ >> "${LOGS}"
 
   AGENT_INTERNAL_IP=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' fakeagent)
   AGENT_INTERNAL_PORT=80
@@ -1074,8 +1108,8 @@ cmd_network() {
 
   ### TEST 1: Simulate browser ==> workspace agent HTTP connectivity
   HTTP_CODE=$(curl -I localhost:${AGENT_EXTERNAL_PORT}/alpine-release \
-                          -s -o /dev/null --connect-timeout 5 \
-                          --write-out "%{http_code}") || echo "28" > /dev/null
+                          -s -o "${LOGS}" --connect-timeout 5 \
+                          --write-out "%{http_code}") || echo "28" >> "${LOGS}"
 
   if [ "${HTTP_CODE}" = "200" ]; then
       info "Browser    => Workspace Agent (localhost): Connection succeeded"
@@ -1085,8 +1119,8 @@ cmd_network() {
 
   ### TEST 1a: Simulate browser ==> workspace agent HTTP connectivity
   HTTP_CODE=$(curl -I ${AGENT_EXTERNAL_IP}:${AGENT_EXTERNAL_PORT}/alpine-release \
-                          -s -o /dev/null --connect-timeout 5 \
-                          --write-out "%{http_code}") || echo "28" > /dev/null
+                          -s -o "${LOGS}" --connect-timeout 5 \
+                          --write-out "%{http_code}") || echo "28" >> "${LOGS}"
 
   if [ "${HTTP_CODE}" = "200" ]; then
       info "Browser    => Workspace Agent ($AGENT_EXTERNAL_IP): Connection succeeded"
@@ -1099,9 +1133,9 @@ cmd_network() {
                                 --entrypoint=curl \
                                 ${IMAGE_CODENVY} \
                                   -I ${AGENT_EXTERNAL_IP}:${AGENT_EXTERNAL_PORT}/alpine-release \
-                                  -s -o /dev/null \
+                                  -s -o "${LOGS}" \
                                   --write-out "%{http_code}")
- 
+
   if [ "${HTTP_CODE}" = "200" ]; then
       info "Server     => Workspace Agent (External IP): Connection succeeded"
   else
@@ -1113,7 +1147,7 @@ cmd_network() {
                                 --entrypoint=curl \
                                 ${IMAGE_CODENVY} \
                                   -I ${AGENT_INTERNAL_IP}:${AGENT_INTERNAL_PORT}/alpine-release \
-                                  -s -o /dev/null \
+                                  -s -o "${LOGS}" \
                                   --write-out "%{http_code}")
 
   if [ "${HTTP_CODE}" = "200" ]; then
@@ -1122,5 +1156,6 @@ cmd_network() {
       info "Server     => Workspace Agent (Internal IP): Connection failed"
   fi
 
-  docker rm -f fakeagent > /dev/null
+  log "docker rm -f fakeagent >> \"${LOGS}\""
+  docker rm -f fakeagent >> "${LOGS}"
 }
