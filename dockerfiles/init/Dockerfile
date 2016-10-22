@@ -15,8 +15,7 @@ RUN mkdir -p /files \
 COPY manifests /files/manifests
 COPY modules /files/modules
 COPY README.md /files
-COPY README_MAC.md /files
-COPY README_WINDOWS.md /files
+COPY DOCS.md /files
 COPY dockerfiles/init/docker-entrypoint.sh /
 RUN chmod +x docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
