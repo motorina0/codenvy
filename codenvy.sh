@@ -158,16 +158,22 @@ update_cli() {
   else
     GITHUB_VERSION=$CHE_CLI_VERSION
   fi
-  
-#  URL=https://raw.githubusercontent.com/eclipse/che/$GITHUB_VERSION/cli.sh
 
- # if ! curl --output /dev/null --silent --head --fail "$URL"; then
- #   error "CLI download error. Bad network or version. CLI update works for 5.0.0-M3+."
- #   return 1;
- # else 
- #   curl -sL $URL > ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
- # fi
- cp -rf $(get_script_source_dir)/cli.sh ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh 
+  # If the codenvy.sh is running from the codenvy source repo, then always use cli.sh that is there 
+  if [[ $(get_script_source_dir) != ~/."${CHE_MINI_PRODUCT_NAME}"/cli ]]; then  
+    cp -rf $(get_script_source_dir)/cli.sh ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
+    return
+  fi
+
+  # We are downloading the CLI from the core repository.
+  URL=https://raw.githubusercontent.com/codenvy/codenvy/$GITHUB_VERSION/cli.sh
+
+  if ! curl --output /dev/null --silent --head --fail "$URL"; then
+    error "CLI download error. Bad network or version."
+    return 1;
+  else 
+    curl -sL $URL > ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
+  fi
 }
 
 get_script_source_dir() {
