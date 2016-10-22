@@ -71,6 +71,7 @@ This command will initialize generation of Puppet configuration files, download 
 
 All Codenvy containers are started with host:container volume bindings to provide an easy access to logs and data. By default, Codenvy creates `/instance` folder in a directory where the start script has been run. This directory has 2 subdirectories - logs and data:
 
+```
 /logs/codenvy/2016                 // server logs
 /logs/codenvy/che-machine-logs     // workspace agent logs
 /logs/nginx/                       // nginx access and error logs
@@ -81,6 +82,7 @@ User data is stored in:
 /data/codenvy                      // project backups
 /data/postgres                     // Postgres data folder (users, workspaces, stacks etc)
 /data/registry                     // workspace snapshots
+```
 
 !Windows Users!
 
