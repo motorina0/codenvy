@@ -38,37 +38,109 @@ init_logging() {
   # Activates console warnings
   DEFAULT_CHE_CLI_WARN="true"
   CHE_CLI_WARN=${CHE_CLI_WARN:-${DEFAULT_CHE_CLI_WARN}}
+
+  # Initialize CLI folder
+  CLI_DIR=~/."${CHE_MINI_PRODUCT_NAME}"/cli
+  test -d "${CLI_DIR}" || mkdir -p "${CLI_DIR}"
+
+  # Initialize logging into a log file
+  DEFAULT_CODENVY_CLI_LOGS_FOLDER="${CLI_DIR}"
+  CODENVY_CLI_LOGS_FOLDER="${CODENVY_CLI_LOGS_FOLDER:-${DEFAULT_CODENVY_CLI_LOGS_FOLDER}}"
+  # Ensure logs folder exists
+  LOGS="${CODENVY_CLI_LOGS_FOLDER}/codenvy_cli.log"
+  mkdir -p "${CODENVY_CLI_LOGS_FOLDER}"
+  # Rename existing log file by adding .old suffix
+  if [[ -f "${LOGS}" ]]; then
+    mv "${LOGS}" "${LOGS}.old"
+  fi
+  # Log date of CLI execution
+  log "$(date)"
+}
+
+# Sends arguments as a text to CLI log file
+# Usage:
+#   log <argument> [other arguments]
+log() {
+  echo "$@" >> "${LOGS}"
 }
 
 warning() {
   if is_warning; then
     printf  "${YELLOW}WARN:${NC} %s\n" "${1}"
   fi
+  log $(printf "WARN: %s\n" "${1}")
 }
 
 info() {
+  if [ -z ${2+x} ]; then
+    PRINT_COMMAND=""
+    PRINT_STATEMENT=$1
+  else
+    PRINT_COMMAND="($CHE_MINI_PRODUCT_NAME $1):"
+    PRINT_STATEMENT=$2
+  fi
   if is_info; then
-    if [ -z ${2+x} ]; then 
-      PRINT_COMMAND=""
-      PRINT_STATEMENT=$1
-    else
-      PRINT_COMMAND="($CHE_MINI_PRODUCT_NAME $1):"
-      PRINT_STATEMENT=$2
-    fi
     printf "${GREEN}INFO:${NC} %s %s\n" \
               "${PRINT_COMMAND}" \
               "${PRINT_STATEMENT}"
   fi
+  log $(printf "INFO: %s %s\n" \
+        "${PRINT_COMMAND}" \
+        "${PRINT_STATEMENT}")
 }
 
 debug() {
   if is_debug; then
     printf  "\n${BLUE}DEBUG:${NC} %s" "${1}"
   fi
+  log $(printf "\nDEBUG: %s" "${1}")
 }
 
 error() {
   printf  "${RED}ERROR:${NC} %s\n" "${1}"
+  log $(printf  "ERROR: %s\n" "${1}")
+}
+
+# Prints message without changes
+# Usage: has the same syntax as printf command
+text() {
+  printf "$@"
+  log $(printf "$@")
+}
+
+## TODO use that for all native calls to improve logging for support purposes
+# Executes command with 'eval' command.
+# Also logs what is being executed and stdout/stderr
+# Usage:
+#   cli_eval <command to execute>
+# Examples:
+#   cli_eval "$(which curl) http://localhost:80/api/"
+cli_eval() {
+  log "$@"
+  tmpfile=$(mktemp)
+  if eval "$@" &>"${tmpfile}"; then
+    # Execution succeeded
+    cat "${tmpfile}" >> "${LOGS}"
+    cat "${tmpfile}"
+    rm "${tmpfile}"
+  else
+    # Execution failed
+    cat "${tmpfile}" >> "${LOGS}"
+    cat "${tmpfile}"
+    rm "${tmpfile}"
+    fail
+  fi
+}
+
+# Executes command with 'eval' command and suppress stdout/stderr.
+# Also logs what is being executed and stdout+stderr
+# Usage:
+#   cli_silent_eval <command to execute>
+# Examples:
+#   cli_silent_eval "$(which curl) http://localhost:80/api/"
+cli_silent_eval() {
+  log "$@"
+  eval "$@" >> "${LOGS}" 2>&1
 }
 
 is_warning() {
@@ -109,7 +181,7 @@ check_docker() {
     return 1;
   fi
 
-  if ! docker ps > /dev/null 2>&1; then
+  if ! docker ps >> "${LOGS}" 2>&1; then
     output=$(docker ps)
     error "Error - Docker not installed properly: \n${output}"
     return 1;
@@ -118,38 +190,41 @@ check_docker() {
   # Prep script by getting default image
   if [ "$(docker images -q alpine 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image alpine:latest"
-    docker pull alpine > /dev/null 2>&1
+    log "docker pull alpine >> \"${LOGS}\" 2>&1"
+    docker pull alpine >> "${LOGS}" 2>&1
   fi
 
   if [ "$(docker images -q appropriate/curl 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image curl:latest"
-    docker pull appropriate/curl > /dev/null 2>&1
+    log "docker pull appropriate/curl >> \"${LOGS}\" 2>&1"
+    docker pull appropriate/curl >> "${LOGS}" 2>&1
   fi
 
   if [ "$(docker images -q codenvy/che-ip:nightly 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image codenvy/che-ip:nightly"
-    docker pull codenvy/che-ip:nightly > /dev/null 2>&1
+    log "docker pull codenvy/che-ip:nightly >> \"${LOGS}\" 2>&1"
+    docker pull codenvy/che-ip:nightly >> \"${LOGS}\" 2>&1
   fi
 
   if [ "$(docker images -q codenvy/version 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image codenvy/version"
-    docker pull codenvy/version > /dev/null 2>&1
+    log "docker pull codenvy/version >> \"${LOGS}\" 2>&1"
+    docker pull codenvy/version >> "${LOGS}" 2>&1
   fi
 }
 
 curl() {
   if ! has_curl; then
+    log "docker run --rm --net=host appropriate/curl \"$@\""
     docker run --rm --net=host appropriate/curl "$@"
   else
+    log "$(which curl) \"$@\""
     $(which curl) "$@"
   fi
 }
 
 update_cli() {
   info "cli" "Downloading cli-$CHE_CLI_VERSION"
-
-  CLI_DIR=~/."${CHE_MINI_PRODUCT_NAME}"/cli
-  test -d "${CLI_DIR}" || mkdir -p "${CLI_DIR}"
 
   if [[ "${CHE_CLI_VERSION}" = "latest" ]] || \
      [[ "${CHE_CLI_VERSION}" = "nightly" ]] || \
@@ -159,8 +234,9 @@ update_cli() {
     GITHUB_VERSION=$CHE_CLI_VERSION
   fi
 
-  # If the codenvy.sh is running from the codenvy source repo, then always use cli.sh that is there 
-  if [[ $(get_script_source_dir) != ~/."${CHE_MINI_PRODUCT_NAME}"/cli ]]; then  
+  # If the codenvy.sh is running from the codenvy source repo, then always use cli.sh that is there
+  if [[ $(get_script_source_dir) != ~/."${CHE_MINI_PRODUCT_NAME}"/cli ]]; then
+    log "cp -rf $(get_script_source_dir)/cli.sh ~/.\"${CHE_MINI_PRODUCT_NAME}\"/cli/cli-$CHE_CLI_VERSION.sh"
     cp -rf $(get_script_source_dir)/cli.sh ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
     return
   fi
@@ -171,7 +247,8 @@ update_cli() {
   if ! curl --output /dev/null --silent --head --fail "$URL"; then
     error "CLI download error. Bad network or version."
     return 1;
-  else 
+  else
+    log "curl -sL $URL > ~/.\"${CHE_MINI_PRODUCT_NAME}\"/cli/cli-$CHE_CLI_VERSION.sh"
     curl -sL $URL > ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
   fi
 }
@@ -179,8 +256,8 @@ update_cli() {
 get_script_source_dir() {
   SOURCE="${BASH_SOURCE[0]}"
   while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-    SOURCE="$(readlink "$SOURCE")"
+    DIR="$( cd -P '$( dirname \"$SOURCE\" )' && pwd )"
+    SOURCE="$(readlink '$SOURCE')"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
   done
   echo "$( cd -P "$( dirname "$SOURCE" )" && pwd )"
@@ -196,6 +273,7 @@ init() {
     update_cli
   fi
 
+  log "source ~/.\"${CHE_MINI_PRODUCT_NAME}\"/cli/cli-${CHE_CLI_VERSION}.sh"
   source ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-${CHE_CLI_VERSION}.sh
 }
 
