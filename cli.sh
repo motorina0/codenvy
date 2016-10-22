@@ -21,6 +21,7 @@ cli_init() {
   DEFAULT_CODENVY_CLI_ACTION="help"
   DEFAULT_CODENVY_DEVELOPMENT_MODE="off"
   DEFAULT_CODENVY_DEVELOPMENT_REPO=$(get_mount_path $PWD)
+  DEFAULT_CODENVY_DEVELOPMENT_TOMCAT="assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone"
   DEFAULT_CODENVY_HOST=$GLOBAL_HOST_IP
   DEFAULT_CODENVY_CONFIG=$(get_mount_path $PWD)/config
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
@@ -32,8 +33,14 @@ cli_init() {
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})
-    CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(ls $DEFAULT_CODENVY_DEVELOPMENT_REPO/assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone-*))
+    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || \
+       [[ ! $(ls "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-* > /dev/null 2>&1) ]]; then
+       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
+       return 2
+    fi
+    CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(ls $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-* > /dev/null 2>&1))    
   fi
+
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
   CODENVY_MANIFEST_DIR=$(get_mount_path ~/."${CHE_MINI_PRODUCT_NAME}"/manifests)
   
