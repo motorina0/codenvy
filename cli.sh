@@ -82,8 +82,8 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     start [--pull | --force]           Starts ${CHE_MINI_PRODUCT_NAME} server
     stop                               Stops ${CHE_MINI_PRODUCT_NAME} server
     restart [--force]                  Restart ${CHE_MINI_PRODUCT_NAME} server
-    destroy [--force]                  Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
-    config                             Generates a ${CHE_MINI_PRODUCT_NAME} configuration from vars and templates
+    destroy                            Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    config                             Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
     upgrade                            Upgrades Codenvy from one version to another with data migrations and bakcups
     download [--pull | --force]        Pulls Docker images to install offline CODENVY_VERSION
     backup                             Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
@@ -751,7 +751,11 @@ cmd_init() {
   touch "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_HOST=${CODENVY_HOST}" > "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_SWARM_NODES=${CODENVY_HOST}:23750" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
+    echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  else
+    echo "CODENVY_ENVIRONMENT=production" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  fi
   echo "CODENVY_INSTANCE=${CODENVY_INSTANCE}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_CONFIG=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_VERSION=${CODENVY_VERSION}" >> "${REFERENCE_ENVIRONMENT_FILE}"
@@ -922,6 +926,8 @@ cmd_restart() {
     info "restart" "Initiating clean start"
     cmd_start
   else
+    info "restart" "Generating updated config..."
+    cmd_config
     info "restart" "Restarting services..."
     log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy restart >> \"${LOGS}\" 2>&1"
     docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart >> "${LOGS}" 2>&1 || true
