@@ -1,7 +1,7 @@
 node default {
 ###############################
 # Codenvy Version
-  $codenvy_version = "5.0.0-hackathon-SNAPSHOT"
+  $codenvy_version = getValue("CODENVY_VERSION","nightly")
 
 ###############################
 # Codenvy Dns
