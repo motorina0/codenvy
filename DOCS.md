@@ -113,7 +113,19 @@ codenvy help
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
 ## Quick Start
+
+### Codenvy as a Remote Server
+
+When running Codenvy on a remote server, export CODENVY_HOST environment variable before running startup script:
+
+`export CODENVY_HOST=$IP`
+
+where `$IP` is an externally accessible IP or a hostname that can be resolved from client machines.
+
+## Starting Codenvy
+
 `codenvy start`
+
 This will install a Codenvy configuration, download Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. A successful start should result with:
 
 ```
