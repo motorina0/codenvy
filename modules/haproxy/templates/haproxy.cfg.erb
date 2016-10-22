@@ -16,7 +16,7 @@ defaults
     option                  http-server-close
     option forwardfor       except 127.0.0.0/8
     option                  redispatch
-    retries                 3
+    retries                 10
     timeout http-request    10s
     timeout queue           1m
     timeout connect         1m
@@ -30,6 +30,7 @@ defaults
 
 backend tomcat_bk
     mode http
+    timeout check 10000
     server tomcat_bk codenvy:8080 check
     errorfile 503 /etc/haproxy/maintenance.html
 

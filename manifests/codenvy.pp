@@ -1,5 +1,4 @@
 node default {
-
 ######################################################################################################
 # CODENVY SYSTEM 
 #
@@ -12,7 +11,7 @@ node default {
 #                   CODENVY_VERSION to a value that is diferent from what is set in codenvy.ver
 #                   Codenvy will not start until this conflict is realized. You can upgrade 
 #                   a Codenvy install from one version to another with 'codenvy upgrade'.
-  $codenvy_version = "5.0.0-hackathon-SNAPSHOT"
+  $codenvy_version = getValue("CODENVY_VERSION","nightly")
 
 ###############################
 # Codenvy Dns
