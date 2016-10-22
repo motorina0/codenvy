@@ -192,10 +192,4 @@ class codenvy {
     creates => "/opt/codenvy/config/codenvy/conf/ssh/key.pem",
     require => File[$config_dirs],
   }
-
-  file { "/opt/codenvy/codenvy.ver":
-    ensure  => "present",
-    content => "$codenvy_version",
-    mode    => "644",
-  }
 }
