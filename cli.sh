@@ -738,7 +738,7 @@ cmd_init() {
   echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_INSTANCE=${CODENVY_INSTANCE}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_CONFIG=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_VERSION=${CODENVY_VERSION}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  echo "CODENVY_VERSION=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
 }
 
 cmd_config() {
@@ -810,7 +810,9 @@ cmd_config() {
 
 cmd_start() {
   debug $FUNCNAME
-  
+
+  # To protect users from accidentally updating their Codenvy servers when they didn't mean
+  # to, which can happen if CODENVY_VERSION=latest
   FORCE_UPDATE=${1:-"--no-force"}
   # Always regenerate puppet configuration from environment variable source, whether changed or not.
   # If the current directory is not configured with an .env file, it will initialize

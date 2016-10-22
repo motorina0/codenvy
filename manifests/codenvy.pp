@@ -1,6 +1,17 @@
 node default {
-###############################
-# Codenvy Version
+
+######################################################################################################
+# CODENVY SYSTEM 
+#
+# Fundamental parameters that affect the initial system operation.
+#
+# CODENVY_VERSION - Sets the version of Codenvy to download and use. We respect this variable
+#                   during 'codenvy init' and 'codenvy download'. Once a Codenvy instance has been
+#                   generated, CODENVY_VERSION is set to the value in codenvy.env, in the instance
+#                   folder and it locks the version for which Codenvy is running. If you set 
+#                   CODENVY_VERSION to a value that is diferent from what is set in codenvy.ver
+#                   Codenvy will not start until this conflict is realized. You can upgrade 
+#                   a Codenvy install from one version to another with 'codenvy upgrade'.
   $codenvy_version = "5.0.0-hackathon-SNAPSHOT"
 
 ###############################
