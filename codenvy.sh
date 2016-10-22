@@ -47,7 +47,7 @@ init_logging() {
   DEFAULT_CODENVY_CLI_LOGS_FOLDER="${CLI_DIR}"
   CODENVY_CLI_LOGS_FOLDER="${CODENVY_CLI_LOGS_FOLDER:-${DEFAULT_CODENVY_CLI_LOGS_FOLDER}}"
   # Ensure logs folder exists
-  LOGS="${CODENVY_CLI_LOGS_FOLDER}/codenvy_cli.log"
+  LOGS="${CODENVY_CLI_LOGS_FOLDER}/cli.log"
   mkdir -p "${CODENVY_CLI_LOGS_FOLDER}"
   # Rename existing log file by adding .old suffix
   if [[ -f "${LOGS}" ]]; then
