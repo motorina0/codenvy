@@ -40,6 +40,7 @@ cli_init() {
   CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
   CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
   CODENVY_BACKUP_FOLDER="${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"
+  CODENVY_OFFLINE_FOLDER=$(get_mount_path $PWD)/offline
 
   CODENVY_CONFIG_MANIFESTS_FOLDER="$CODENVY_CONFIG/manifests"
   CODENVY_CONFIG_MODULES_FOLDER="$CODENVY_CONFIG/modules"
@@ -77,31 +78,32 @@ cli_init() {
 
   USAGE="
 Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
-    version                            Installed version and upgrade paths
-    init [--pull | --force]            Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
-    start [--pull | --force]           Starts ${CHE_MINI_PRODUCT_NAME} server
-    stop                               Stops ${CHE_MINI_PRODUCT_NAME} server
-    restart [--force]                  Restart ${CHE_MINI_PRODUCT_NAME} server
-    destroy                            Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
-    config                             Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
-    upgrade                            Upgrades Codenvy from one version to another with data migrations and bakcups
-    download [--pull | --force]        Pulls Docker images to install offline CODENVY_VERSION
-    backup                             Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
-    restore                            Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
-    info [ --all                       Run all debugging tests
-           --network ]                 Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
+    version                              Installed version and upgrade paths
+    init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
+    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} server
+    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} server
+    restart [--force]                    Restart ${CHE_MINI_PRODUCT_NAME} server
+    destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
+    upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
+    download [--pull|--force|--offline]  Pulls Docker images to install offline CODENVY_VERSION
+    backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
+    restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
+    offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
+    info [ --all                         Run all debugging tests
+           --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
 
 Variables:
-    CODENVY_VERSION                     Version to run
-    CODENVY_CONFIG                      Where the Codenvy config, CLI and variables are located
-    CODENVY_INSTANCE                    Where ${CHE_MINI_PRODUCT_NAME} data, database, logs, are saved
-    CODENVY_PORT                        External port of ${CHE_MINI_PRODUCT_NAME} server
-    CODENVY_PROPERTY_<>                 One time use properties passed to ${CHE_MINI_PRODUCT_NAME} - see docs
-    CODENVY_CLI_VERSION                 Version of CLI to run
-    CODENVY_UTILITY_VERSION             Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
-    CODENVY_DEVELOPMENT_MODE            If 'on', then has images mount host source folders instead of embedded files
-    CODENVY_DEVELOPMENT_REPO            Location of host git repository that contains source code to be mounted
-    CODENVY_BACKUP_FOLDER               Location where backups files of installation are stored. Default = pwd
+    CODENVY_VERSION                       Version to run
+    CODENVY_CONFIG                        Where the Codenvy config, CLI and variables are located
+    CODENVY_INSTANCE                      Where ${CHE_MINI_PRODUCT_NAME} data, database, logs, are saved
+    CODENVY_PORT                          External port of ${CHE_MINI_PRODUCT_NAME} server
+    CODENVY_PROPERTY_<>                   One time use properties passed to ${CHE_MINI_PRODUCT_NAME} - see docs
+    CODENVY_CLI_VERSION                   Version of CLI to run
+    CODENVY_UTILITY_VERSION               Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
+    CODENVY_DEVELOPMENT_MODE              If 'on', then has images mount host source folders instead of embedded files
+    CODENVY_DEVELOPMENT_REPO              Location of host git repository that contains source code to be mounted
+    CODENVY_BACKUP_FOLDER                 Location where backups files of installation are stored. Default = pwd
 "
 }
 
@@ -113,7 +115,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|update|info|network|debug|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|offline|update|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -171,6 +173,10 @@ cli_cli() {
     restore)
       shift
       cmd_restore "$@"
+    ;;
+    offline)
+      shift
+      cmd_offline
     ;;
     update)
       shift
@@ -388,7 +394,7 @@ update_image_if_not_found() {
 
 update_image() {
   debug $FUNCNAME
-
+  
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
@@ -688,19 +694,41 @@ confirm_operation() {
 cmd_download() {
   FORCE_UPDATE=${1:-"--no-force"}
 
-  get_version_registry
-  get_image_manifest $CODENVY_VERSION
+  # If --offline passed to init, config, start, restart, then load the images from TAR files
+  if [ ${FORCE_UPDATE}  == "--offline" ]; then
+    info "download" "Importing ${CHE_MINI_PRODUCT_NAME} Docker images from tars..."
 
-  IFS=$'\n'
-  for SINGLE_IMAGE in $IMAGE_LIST; do
-    VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
-    if [[ $FORCE_UPDATE == "--force" ]] ||
-       [[ $FORCE_UPDATE == "--pull" ]]; then
-      update_image $FORCE_UPDATE $VALUE_IMAGE
-    else
-      update_image_if_not_found $VALUE_IMAGE
+    if [ ! -d "${CODENVY_OFFLINE_FOLDER}" ]; then
+      info "download" "You requested offline loading of images, but could not find ${CODENVY_OFFLINE_FOLDER}"
+      return 2;
     fi
-  done
+
+    IFS=$'\n'
+    for file in "${CODENVY_OFFLINE_FOLDER}"/*.tar 
+    do
+      if ! $(docker load < "${CODENVY_OFFLINE_FOLDER}"/"${file##*/}" > /dev/null); then
+        error "Failed to restore ${CHE_MINI_PRODUCT_NAME} Docker images"
+        return 2;
+      fi
+      info "download" "Loading ${file##*/}..."
+    done
+
+  else
+
+    get_version_registry
+    get_image_manifest $CODENVY_VERSION
+
+    IFS=$'\n'
+    for SINGLE_IMAGE in $IMAGE_LIST; do
+      VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
+      if [[ $FORCE_UPDATE == "--force" ]] ||
+         [[ $FORCE_UPDATE == "--pull" ]]; then
+        update_image $FORCE_UPDATE $VALUE_IMAGE
+      else
+        update_image_if_not_found $VALUE_IMAGE
+      fi
+    done
+  fi
 }
 
 cmd_init() {
@@ -776,7 +804,9 @@ cmd_config() {
   FORCE_UPDATE=${1:-"--no-force"}
   if ! is_initialized; then
     cmd_init $FORCE_UPDATE
-  elif [[ "${FORCE_UPDATE}" == "--pull" ]] || [[ "${FORCE_UPDATE}" == "--force" ]]; then 
+  elif [[ "${FORCE_UPDATE}" == "--pull" ]] || \
+       [[ "${FORCE_UPDATE}" == "--force" ]] || \
+       [[ "${FORCE_UPDATE}" == "--offline" ]]; then 
     cmd_download $FORCE_UPDATE
   fi
 
@@ -920,11 +950,12 @@ cmd_restart() {
   fi
 
   FORCE_UPDATE=${1:-"--no-force"}
-  if [ "${FORCE_UPDATE}" == "--force" ]; then
+  if [[ "${FORCE_UPDATE}" == "--force" ]] || \
+     [[ "${FORCE_UPDATE}" == "--offline" ]]; then
     info "restart" "Stopping and removing containers..."
     cmd_stop
     info "restart" "Initiating clean start"
-    cmd_start
+    cmd_start ${FORCE_UPDATE}
   else
     info "restart" "Generating updated config..."
     cmd_config
@@ -1046,6 +1077,37 @@ cmd_restore() {
   info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
   tar -C "${CODENVY_INSTANCE}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}"
+}
+
+cmd_offline() {
+  info "offline" "Checking registry for version '$CODENVY_VERSION' images"
+  if ! has_version_registry $CODENVY_VERSION; then
+    version_error $CODENVY_VERSION
+    return 1;  
+  fi
+
+  # Make sure the images have been pulled and are in your local Docker registry
+  cmd_download
+
+  mkdir -p $CODENVY_OFFLINE_FOLDER
+
+  IMAGE_LIST=$(cat "$CODENVY_MANIFEST_DIR"/$CODENVY_VERSION/images)
+  IFS=$'\n'
+  info "offline" "Saving ${CHE_MINI_PRODUCT_NAME} Docker images as tar files..."
+
+  for SINGLE_IMAGE in $IMAGE_LIST; do
+    VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
+    TAR_NAME=$(echo $VALUE_IMAGE | sed "s|\/|_|")
+    info "offline" "Saving $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar..."
+    if ! $(docker save $VALUE_IMAGE > $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar); then
+      error "Docker was interrupted while saving $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar"
+      return 1;
+    fi
+  done
+
+  # This is Codenvy's singleton instance with the version registry
+  docker save codenvy/version > "${CODENVY_OFFLINE_FOLDER}"/codenvy_version.tar
+  info "offline" "Images saved as tars in $CODENVY_OFFLINE_FOLDER"
 }
 
 cmd_info() {
