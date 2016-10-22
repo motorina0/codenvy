@@ -742,9 +742,14 @@ cmd_init() {
 }
 
 cmd_config() {
+
+  # If the system is not initialized, initalize it.
+  # If the system is already initialized, but a user wants to update images, then re-download.
   FORCE_UPDATE=${1:-"--no-force"}
   if ! is_initialized; then
     cmd_init $FORCE_UPDATE
+  elif [[ "${FORCE_UPDATE}" == "--pull"]] || [[ "${FORCE_UPDATE}" == "--force" ]]; then 
+    cmd_download $FORCE_UPDATE
   fi
 
   # If the CODENVY_VERSION set by an environment variable does not match the value of
