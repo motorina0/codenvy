@@ -118,7 +118,7 @@ services:
 # CODENVY
 ########################
   codenvy:
-    image: codenvy/codenvy:<%= scope.lookupvar('compose::codenvy_version') -%>
+    image: codenvy/codenvy:<%= scope.lookupvar('compose::codenvy_version') %>
     depends_on:
       - haproxy
       - postgres
