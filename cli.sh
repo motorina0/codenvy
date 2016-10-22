@@ -748,7 +748,7 @@ cmd_config() {
   FORCE_UPDATE=${1:-"--no-force"}
   if ! is_initialized; then
     cmd_init $FORCE_UPDATE
-  elif [[ "${FORCE_UPDATE}" == "--pull"]] || [[ "${FORCE_UPDATE}" == "--force" ]]; then 
+  elif [[ "${FORCE_UPDATE}" == "--pull" ]] || [[ "${FORCE_UPDATE}" == "--force" ]]; then 
     cmd_download $FORCE_UPDATE
   fi
 
