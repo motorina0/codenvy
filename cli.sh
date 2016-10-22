@@ -455,6 +455,15 @@ port_open(){
   fi
 }
 
+container_exist_by_name(){
+  docker inspect ${1} > /dev/null 2>&1
+  if [ "$?" == "0" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 get_server_container_id() {
   docker inspect -f '{{.Id}}' ${1}
 }
@@ -515,7 +524,7 @@ check_if_booted() {
 
   if server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
     info "start" "Booted and reachable"
-#    info "$({CHE_MINI_PRODUCT_NAME} start): Ver: $(get_server_version ${CURRENT_CHE_SERVER_CONTAINER_ID})"
+    info "start" "Ver: $(get_installed_version)"
     info "start" "Use: http://${CODENVY_HOST}"
     info "start" "API: http://${CODENVY_HOST}/swagger"
   else
@@ -797,6 +806,20 @@ cmd_config() {
 cmd_start() {
   debug $FUNCNAME
 
+  # If Codenvy is already started or booted, then terminate early.
+  if container_exist_by_name $CODENVY_SERVER_CONTAINER_NAME; then
+    CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
+    if container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID} && \
+       server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
+       info "start" "Codenvy is already running"
+       info "start" "Server logs at \"docker logs -f ${CODENVY_SERVER_CONTAINER_NAME}\""
+       info "start" "Ver: $(get_installed_version)"
+       info "start" "Use: http://${CODENVY_HOST}"
+       info "start" "API: http://${CODENVY_HOST}/swagger"
+       return
+    fi
+  fi
+
   # To protect users from accidentally updating their Codenvy servers when they didn't mean
   # to, which can happen if CODENVY_VERSION=latest
   FORCE_UPDATE=${1:-"--no-force"}
@@ -809,7 +832,7 @@ cmd_start() {
   printf "         port 80:  $(port_open 80 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   printf "         port 443: $(port_open 443 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   if ! $(port_open 80) || ! $(port_open 443); then
-    error "Ports required to run Codenvy are being used by another program. Aborting..."
+    error "Ports required to run codenvy are used by another program. Aborting..."
     return 1;
   fi
   printf "\n"
