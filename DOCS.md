@@ -1,45 +1,66 @@
-1. [Architecture](#Architecture)
-2. [Installation Types](#Installation_types)
-3. [System Requirements](#S3-system-requirements)
-4. [New Installation](#4-new_installation)
-5. [Logs and User Data](#5-logs-and-user-data)
-6. [Configuration](#New_Installation)
-7. [Updates](#Updates)
-8. [Scaling](#Scaling)
-9. [Data Backup and Recovery](#Backups)
-10. [Migration](#migration)
-10. [Monitoring](#Monitoring)
-11. [CLI Command Reference](#cli_reference)
+- [Architecture](#Architecture)
+- [Installation Types](#Installation_types)
+- [System Requirements](#S3-system-requirements)
+- [New Installation](#4-new_installation)
+- [Logs and User Data](#5-logs-and-user-data)
+- [Configuration](#New_Installation)
+- [Updates](#Updates)
+- [Scaling](#Scaling)
+- [Data Backup and Recovery](#Backups)
+- [Migration](#migration)
+- [Monitoring](#Monitoring)
+- [CLI Reference](#cli_reference)
 
+## Introduction
+Packaging to configure and run [Codenvy](https://codenvy.com) as a clustered set of Docker containers using Docker compose. 
 
+## Team
+See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
 
-## 3. System Requirements
+## Issues
+Docker is a relatively new project and is actively tested by a thriving community.
 
+Given the nature of the development and release cycle it is important that you have the latest version of docker installed because any issue that you encounter might have already been fixed with a newer docker release.
+
+Install the most recent version of the Docker Engine for your platform using the [official Docker releases](http://docs.docker.com/engine/installation/), including support for Mac and Windows!  If you are on Linux, you can also innstall using:
+
+```bash
+wget -qO- https://get.docker.com/ | sh
+```
+
+Sometimes Fedora and RHEL/CentOS users will encounter unexpected issues. Try disabling selinux with `setenforce 0` and check if resolves the issue. 
+
+You may also set `CHE_CLI_DEBUG=true` to enable debugging of the CLI, which could help you pin point any configuration issues.
+
+If using the latest docker version and/or disabling selinux does not fix the issue then please file a issue request on the [issues](https://github.com/codenvy/codenvy/issues) page. If you are a licensed customer of Codenvy, you can get prioritized support with support@codenvy.com.
+
+In your issue report please make sure you provide the following information:
+- The host distribution and release version
+- Output of the `docker version` command
+- Output of the `docker info` command
+- The `codenvy <command>` you used to run Codenvy
+
+## System Requirements
 Codenvy installs on Linux, Mac and Windows. 
 
 Software:
-
 * Docker 11.1+
 * Docker Compose 1.8+. 
+* Bash
 
-Docker for Mac and Windows have Compose pre-installed. See: [Install Docker Compose on Linux](https://docs.docker.com/compose/install/).
+Docker for Mac and Windows have compose pre-installed. See: [Install Docker Compose on Linux](https://docs.docker.com/compose/install/). The Docker Toolbox for Windows installs [Git Bash for Windows](https://git-for-windows.github.io/), which is needed to run the CLI, a cross-platform set of bash scripts.
 
 System:
-
 * 2 cores
 * 3GB RAM
-* 3GB disc space
+* 3GB disk space
 
-These are minimum requirements to install Codenvy and run one workspace. The overall size of Codenvy Docker images is ~800MB. You need at least 1GB for a running workspace as well. 
+This will let you install Codenvy and run a single workspace. Codenvy's Docker images consume about 800MB of disk and the Docker images for your workspace templates can each range from 5MB up to 1.5GB. 
 
-!Linux and Mac users!
+Docker in a VM:
+Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all variations that launch virtual machines that contain a Docker daemon that allows you to run Docker. We recommend increasing your default VM size to at least 4GB. Each virtualization solution has different requirements around mounting VM folders to your host machine - please enable this for your OS so that Codenvy data is persisted on your host disk.
 
-It is recommended to increase VM RAM from the default 2GB to 3-4GB.
-
-Disc sharing must be enabled to persist data onto the host filesystem. 
-
-
-## 4. New_Installation
+## New Installation
 
 ### Install Codenvy CLI
 
@@ -69,7 +90,7 @@ Boot Codenvy:
 
 This command will initialize generation of Puppet configuration files, download all required Docker images, run pre-flight checks, boot Codenvy, and run post-flish checks. If all containers and underlying service have started correctly, the CLI will print out information on where Codenvy is available. It's VM IP by default.
 
-## 5. Logs and User Data
+## Logs and User Data
 
 All Codenvy containers are started with host:container volume bindings to provide an easy access to logs and data. By default, Codenvy creates `/instance` folder in a directory where the start script has been run. This directory has 2 subdirectories - logs and data:
 
