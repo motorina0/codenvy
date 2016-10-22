@@ -132,6 +132,9 @@ services:
        - '<%= scope.lookupvar('compose::codenvy_folder') -%>/data/codenvy/che-machines/:/opt/codenvy-data/che-machines/'
        - '<%= scope.lookupvar('compose::codenvy_folder') -%>/config/codenvy/conf:/opt/codenvy-data/conf'
        - '<%= scope.lookupvar('compose::codenvy_folder') -%>/config/codenvy/conf/server.xml:/opt/codenvy-tomcat/conf/server.xml'
+<% if scope.lookupvar('codenvy::env') != 'production' -%>
+       - '<%= scope.lookupvar('compose::codenvy_development_tomcat') -%>:/opt/codenvy-tomcat'
+<% end -%>
     links:
       - 'postgres:codenvy-postgres'
       - 'swarm:codenvy-swarm'
