@@ -51,10 +51,10 @@ cli_init() {
   # For some situations, Docker requires a path for volume mount which is posix-based.
   # In other cases, the same file needs to be in windows format
   if has_docker_for_windows_client; then
-    REFERENCE_ENVIRONMENT_FILE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE}/${CODENVY_ENVIRONMENT_FILE}"))
+    REFERENCE_ENVIRONMENT_FILE=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"))
     REFERENCE_COMPOSE_FILE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"))
   else
-    REFERENCE_ENVIRONMENT_FILE="${CODENVY_INSTANCE}/${CODENVY_ENVIRONMENT_FILE}"
+    REFERENCE_ENVIRONMENT_FILE="${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"
     REFERENCE_COMPOSE_FILE="${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"
   fi
 
@@ -81,6 +81,7 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     restart [--force]                  Restart ${CHE_MINI_PRODUCT_NAME} server
     destroy [--force]                  Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     config                             Generates a ${CHE_MINI_PRODUCT_NAME} configuration from vars and templates
+    upgrade                            Upgrades Codenvy from one version to another with data migrations and bakcups
     download [--pull | --force]        Pulls Docker images to install offline CODENVY_VERSION
     backup                             Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
     restore                            Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
@@ -109,7 +110,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|download|backup|restore|update|info|network|debug|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|update|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -151,6 +152,10 @@ cli_cli() {
     destroy)
       shift 
       cmd_destroy "$@"
+    ;;
+    upgrade)
+      shift 
+      cmd_upgrade "$@"
     ;;
     version)
       shift 
@@ -525,7 +530,7 @@ is_initialized() {
   if [[ -d "${CODENVY_CONFIG_MANIFESTS_FOLDER}" ]] && \
      [[ -d "${CODENVY_CONFIG_MODULES_FOLDER}" ]] && \
      [[ -f "${REFERENCE_ENVIRONMENT_FILE}" ]] && \
-     [[ -f "${CODENVY_INSTANCE}/${CODENVY_VERSION_FILE}" ]]; then
+     [[ -f "${CODENVY_CONFIG}/${CODENVY_VERSION_FILE}" ]]; then
     return 0
   else
     return 1
@@ -544,7 +549,6 @@ get_version_registry() {
   info "cli" "Downloading version registry..."
 
   ### Remove these comments once in production
-  docker rmi -f $(docker images -q codenvy/version) > /dev/null 2>&1
   docker pull codenvy/version > /dev/null 2>&1 || true
   docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy codenvy/version
 }
@@ -582,11 +586,6 @@ get_image_manifest() {
 }
 
 get_upgrade_manifest() {
-  if ! has_version_registry $1; then
-    version_error $1
-    return 1;  
-  fi
-
   #  4.7.2 -> 5.0.0-M2-SNAPSHOT  <insert-syntax>
   #  4.7.2 -> 4.7.3              <insert-syntax>
   while IFS='' read -r line || [[ -n "$line" ]]; do
@@ -597,15 +596,10 @@ get_upgrade_manifest() {
     for i in `seq 1 $((25-${#VER}))`; do printf " "; done    
     printf "%s" $UPG
     printf "\n"
-  done < "$CODENVY_MANIFEST_DIR"/$1/upgrades
+  done < "$CODENVY_MANIFEST_DIR"/upgrades
 }
 
 get_version_manifest() {
-  if ! has_version_registry $1; then
-    version_error $1
-    return 1;  
-  fi
-
   while IFS='' read -r line || [[ -n "$line" ]]; do
     VER=$(echo $line | cut -d ' ' -f1)
     CHA=$(echo $line | cut -d ' ' -f2)
@@ -617,14 +611,14 @@ get_version_manifest() {
     for i in `seq 1 $((18-${#CHA}))`; do printf " "; done    
     printf "%s" $UPG
     printf "\n"
-  done < "$CODENVY_MANIFEST_DIR"/$1/versions
+  done < "$CODENVY_MANIFEST_DIR"/versions
 }
 
 get_installed_version() {
   if ! is_initialized; then
     echo "<not-installed>"
   else
-    cat "${CODENVY_INSTANCE}"/$CODENVY_VERSION_FILE
+    cat "${CODENVY_CONFIG}"/$CODENVY_VERSION_FILE
   fi
 }
 
@@ -632,15 +626,7 @@ get_installed_installdate() {
   if ! is_initialized; then
     echo "<not-installed>"
   else
-    cat "${CODENVY_INSTANCE}"/$CODENVY_VERSION_FILE
-  fi
-}
-
-get_installed_commitid() {
-  if ! is_initialized; then
-    echo "<not-installed>"
-  else
-    cat "${CODENVY_INSTANCE}"/$CODENVY_VERSION_FILE
+    cat "${CODENVY_CONFIG}"/$CODENVY_VERSION_FILE
   fi
 }
 
@@ -738,7 +724,10 @@ cmd_init() {
   echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_INSTANCE=${CODENVY_INSTANCE}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_CONFIG=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_VERSION=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  echo "CODENVY_VERSION=${CODENVY_VERSION}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+
+  # Write the Codenvy version to codenvy.ver
+  echo "$CODENVY_VERSION" > "${CODENVY_CONFIG}/${CODENVY_VERSION_FILE}"
 }
 
 cmd_config() {
@@ -756,12 +745,9 @@ cmd_config() {
   # the codenvy.ver file of the installed instance, then do not proceed as there is a 
   # confusion between what the user has set and what the instance expects.
   INSTALLED_VERSION=$(get_installed_version)
-  if [[ $CODENVY_VERSION != "nightly" ]] && \
-     [[ $CODENVY_VERSION != "latest" ]]; then
-     if [[ $CODENVY_VERSION != $INSTALLED_VERSION ]]; then
-      info "config" "CODENVY_VERSION=$CODENVY_VERSION does not match instance/${CODENVY_ENVIRONMENT_FILE}=$INSTALLED_VERSION. Aborting."
-      return 1      
-     fi
+  if [[ $CODENVY_VERSION != $INSTALLED_VERSION ]]; then
+    info "config" "CODENVY_VERSION=$CODENVY_VERSION does not match ${CODENVY_ENVIRONMENT_FILE}=$INSTALLED_VERSION. Aborting."
+    return 1      
   fi
 
   if [ -z ${IMAGE_PUPPET+x} ]; then
@@ -884,6 +870,11 @@ cmd_destroy() {
   rm -rf "${CODENVY_CONFIG}"
 }
 
+cmd_upgrade() {
+  debug $FUNCNAME
+  info "upgrade" "Not yet implemented"
+}
+
 cmd_version() {
   debug $FUNCNAME
 
@@ -894,7 +885,6 @@ cmd_version() {
   printf "Codenvy:\n"
   printf "  Version:      %s\n" $(get_installed_version)
   printf "  Installed:    %s\n" $(get_installed_installdate)
-  printf "  Git commit:   %s\n" $(get_installed_commitid)
   printf "  CLI version:  $CHE_CLI_VERSION\n"
 
   if is_initialized; then
