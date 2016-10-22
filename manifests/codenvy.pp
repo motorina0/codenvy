@@ -299,9 +299,15 @@ node default {
 
 ###############################
 #
-# Codenvy folder on host machine
+# Codenvy folders on host machine
   $codenvy_folder = getValue("CODENVY_INSTANCE","/tmp/codenvy")
-  $puppet_src_folder = getValue("CODENVY_CONFIG","/some/path")
+
+###############################
+# Codenvy developmet mode
+# path to codenvy puppet sources for development mode
+  $puppet_src_folder = getValue("CODENVY_CONFIG","/path/to/codenvy/codenvy/puppet/sources")
+# path to codenvy tomcat for development mode
+  $codenvy_development_tomcat = getValue("CODENVY_DEVELOPMENT_TOMCAT","/path/to/codenvy_tomcat")
 
 ###############################
 # Include base module
