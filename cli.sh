@@ -45,8 +45,8 @@ cli_init() {
   CODENVY_ENVIRONMENT_FILE="codenvy.env"
   CODENVY_COMPOSE_FILE="docker-compose.yml"
   CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
-  CODENVY_CONFIG_BACKUP_FILE_NAME="CODENVY_CONFIG_BACKUP.tar"
-  CODENVY_INSTANCE_BACKUP_FILE_NAME="CODENVY_INSTANCE_BACKUP.tar"
+  CODENVY_CONFIG_BACKUP_FILE_NAME="codenvy_config_backup.tar"
+  CODENVY_INSTANCE_BACKUP_FILE_NAME="codenvy_instance_backup.tar"
 
   # For some situations, Docker requires a path for volume mount which is posix-based.
   # In other cases, the same file needs to be in windows format
@@ -81,16 +81,11 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     restart [--force]                  Restart ${CHE_MINI_PRODUCT_NAME} server
     destroy [--force]                  Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     config                             Generates a ${CHE_MINI_PRODUCT_NAME} configuration from vars and templates
-    download [--force]                 Pulls Docker images to install offline CODENVY_VERSION
-    backup [--force]                   Backups Codenvy configuration and data to ${CODENVY_BACKUP_FOLDER:-${PWD}}
-    restore [--force]                  Restores Codenvy configuration and data from ${CODENVY_BACKUP_FOLDER:-${PWD}}
+    download [--pull | --force]        Pulls Docker images to install offline CODENVY_VERSION
+    backup                             Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
+    restore                            Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
     info [ --all                       Run all debugging tests
-           --server                    Run ${CHE_MINI_PRODUCT_NAME} launcher and server debugging tests
-           --networking                Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
-           --cli                       Print CLI (this program) debugging info
-           --create [<url>]            Test creating a workspace and project in ${CHE_MINI_PRODUCT_NAME}
-                    [<user>]
-                    [<pass>] ]
+           --network ]                 Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
 
 Variables:
     CODENVY_VERSION                     Version to run
@@ -102,7 +97,7 @@ Variables:
     CODENVY_UTILITY_VERSION             Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
     CODENVY_DEVELOPMENT_MODE            If 'on', then has images mount host source folders instead of embedded files
     CODENVY_DEVELOPMENT_REPO            Location of host git repository that contains source code to be mounted
-    CODENVY_BACKUP_FOLDER               Location where backups files of installation are stored. Current folder by default
+    CODENVY_BACKUP_FOLDER               Location where backups files of installation are stored. Default = pwd
 "
 }
 
@@ -114,7 +109,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|download|backup|restore|update|info|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|config|download|backup|restore|update|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -176,6 +171,14 @@ cli_cli() {
     info)
       shift
       cmd_info "$@"
+    ;;
+    debug)
+      shift
+      cmd_debug "$@"
+    ;;
+    network)
+      shift
+      cmd_network "$@"
     ;;
     help)
       usage
@@ -476,7 +479,7 @@ wait_until_server_is_booted () {
   until server_is_booted ${2} || [ ${ELAPSED} -eq "${SERVER_BOOT_TIMEOUT}" ]; do
     sleep 2
     # Total hack - having to restart haproxy for some reason on windows
-    if has_docker_for_windows_client; then
+    if is_docker_for_windows || is_docker_for_mac; then
       docker restart codenvy_haproxy_1 > /dev/null
     fi
     ELAPSED=$((ELAPSED+1))
@@ -495,9 +498,9 @@ server_is_booted() {
 
 check_if_booted() {
   CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
-  wait_until_container_is_running 10 ${CURRENT_CODENVY_SERVER_CONTAINER_ID}
+  wait_until_container_is_running 20 ${CURRENT_CODENVY_SERVER_CONTAINER_ID}
   if ! container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
-    error "(${CHE_MINI_PRODUCT_NAME} start): Timeout waiting for ${CHE_PRODUCT_NAME} container to start."
+    error "(${CHE_MINI_PRODUCT_NAME} start): Timeout waiting for ${CHE_MINI_PRODUCT_NAME} container to start."
     return 1
   fi
 
@@ -653,7 +656,8 @@ confirm_operation() {
 
   if [ ! "${FORCE_OPERATION}" == "--force" ]; then
     echo ""
-    read -p "      Are you sure? [N/Y] " -n 1 -r
+    read -p "      Are you sure? [N/y] " -n 1 -r
+    echo ""
     echo ""
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       return 1;
@@ -691,7 +695,7 @@ cmd_init() {
   if [ "${FORCE_UPDATE}" == "--no-force" ]; then
     # If codenvy.environment file exists, then fail
     if is_initialized; then
-      info "(${CHE_MINI_PRODUCT_NAME} init): Already initialized. Aborting."
+      info "init" "Already initialized."
       return 1
     fi
   fi
@@ -707,12 +711,12 @@ cmd_init() {
   mkdir -p "${CODENVY_INSTANCE}"
 
   if [ ! -w "${CODENVY_CONFIG}" ]; then
-    error "You have specified a CODENVY_CONFIG folder that is not writable. Aborting."
+    error "CODENVY_CONFIG is not writable. Aborting."
     return 1;
   fi
 
   if [ ! -w "${CODENVY_INSTANCE}" ]; then
-    error "You have specified a CODENVY_INSTANCE folder that is not writable. Aborting."
+    error "CODENVY_INSTANCE is not writable. Aborting."
     return 1;
   fi
 
@@ -734,6 +738,7 @@ cmd_init() {
   echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_INSTANCE=${CODENVY_INSTANCE}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   echo "CODENVY_CONFIG=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+  echo "CODENVY_VERSION=${CODENVY_VERSION}" >> "${REFERENCE_ENVIRONMENT_FILE}"
 }
 
 cmd_config() {
@@ -742,7 +747,18 @@ cmd_config() {
     cmd_init $FORCE_UPDATE
   fi
 
-#TODO - Update this to use installed version instead of environment variable
+  # If the CODENVY_VERSION set by an environment variable does not match the value of
+  # the codenvy.ver file of the installed instance, then do not proceed as there is a 
+  # confusion between what the user has set and what the instance expects.
+  INSTALLED_VERSION=$(get_installed_version)
+  if [[ $CODENVY_VERSION != "nightly" ]] && \
+     [[ $CODENVY_VERSION != "latest" ]]; then
+     if [[ $CODENVY_VERSION != $INSTALLED_VERSION ]]; then
+      info "config" "CODENVY_VERSION=$CODENVY_VERSION does not match instance/${CODENVY_ENVIRONMENT_FILE}=$INSTALLED_VERSION. Aborting."
+      return 1      
+     fi
+  fi
+
   if [ -z ${IMAGE_PUPPET+x} ]; then
     get_image_manifest $CODENVY_VERSION
   fi
@@ -823,7 +839,8 @@ cmd_stop() {
   info "stop" "Stopping containers..."
   docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy stop > /dev/null 2>&1 || true
   info "stop" "Removing containers"
-  docker rm $(docker ps -aq --filter name=${DOCKER_CONTAINER_NAME_PREFIX}) > /dev/null 2>&1 || true 
+  yes | docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy rm > /dev/null 2>&1 || true
+#  docker rm $(docker ps -aq --filter name=${DOCKER_CONTAINER_NAME_PREFIX}) > /dev/null 2>&1 || true 
 }
 
 cmd_restart() {
@@ -858,31 +875,6 @@ cmd_destroy() {
   fi
   info "destroy" "Deleting config"
   rm -rf "${CODENVY_CONFIG}"
-}
-
-cmd_info() {
-  debug $FUNCNAME
-  if [ $# -eq 0 ]; then
-    TESTS="--server"
-  else
-    TESTS=$1
-  fi
-
-  case $TESTS in
-    --all|-all)
-      cli_debug
-      run_connectivity_tests
-    ;;
-    --networking|-networking)
-      run_connectivity_tests
-    ;;
-    --server|-server)
-      cli_debug
-    ;;
-    *)
-      error "Unknown info flag passed: $2. Exiting."
-    ;;
-  esac
 }
 
 cmd_version() {
@@ -920,35 +912,35 @@ cmd_backup() {
 
   if [[ ! -d "${CODENVY_CONFIG}" ]] || \
      [[ ! -d "${CODENVY_INSTANCE}" ]]; then
-    error "Codenvy config ${CODENVY_CONFIG} and instance ${CODENVY_INSTANCE} should be existing folders"
+    error "Cannot find existing CODENVY_CONFIG or CODENVY_INSTANCE. Aborting."
     return;
   fi
 
   if [[ ! -d "${CODENVY_BACKUP_FOLDER}" ]]; then
-    error "Backup path ${CODENVY_BACKUP_FOLDER} doesn't point to existing folder"
+    error "CODENVY_BACKUP_FOLDER does not exist. Aborting."
     return;
   fi
 
+  ## TODO: - have backups get time & day for rotational purposes
   if [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" ]] || \
      [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" ]]; then
 
-    WARNING="Previous backup will be replaced with the new one, this is unrecoverable !!!"
+    WARNING="Previous backup will be overwritten."
     if ! confirm_operation "${WARNING}" "$@"; then
-      info "Codenvy backuping is cancelled"
       return;
     fi 
   fi
 
   if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
-    error "Codenvy should be stopped before backuping"
+    error "Codenvy is running. Stop before performing a backup. Aborting."
     return;
   fi
 
   # TODO multiple backups?
-  info "Backuping Codenvy ..."
+  info "backup" "Saving configuration..."
   tar -C "${CODENVY_CONFIG}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" .
+  info "backup" "Saving instance data..."
   tar -C "${CODENVY_INSTANCE}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" .
-  info "Backuped succesfully !"
 }
 
 cmd_restore() {
@@ -957,57 +949,91 @@ cmd_restore() {
   if [[ -d "${CODENVY_CONFIG}" ]] || \
      [[ -d "${CODENVY_INSTANCE}" ]]; then
     
-    WARNING="Current data and configuration will be replaced with a backup, this is unrecoverable !!!"
+    WARNING="Restoration overwrites existing configuration and data. Are you sure?"
     if ! confirm_operation "${WARNING}" "$@"; then
-      info "Codenvy backuping is cancelled"
       return;
     fi
   fi
 
   if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" > /dev/null 2>&1; then
-    error "Codenvy should be stopped before restoring"
+    error "Codenvy is running. Stop before performing a restore. Aborting"
     return;
   fi
 
-  info "Recovering Codenvy ..."
+  info "restore" "Recovering configuration..."
   rm -rf "${CODENVY_INSTANCE}"
   rm -rf "${CODENVY_CONFIG}"
   mkdir -p "${CODENVY_CONFIG}"  
   tar -C "${CODENVY_CONFIG}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}"
+  info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
   tar -C "${CODENVY_INSTANCE}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}"
-  info "Codenvy recovered!"
 }
 
-cli_debug() {
+cmd_info() {
+  debug $FUNCNAME
+  if [ $# -eq 0 ]; then
+    TESTS="--debug"
+  else
+    TESTS=$1
+  fi
+
+  case $TESTS in
+    --all|-all)
+      cmd_debug
+      cmd_network
+    ;;
+    --network|-network)
+      cmd_network
+    ;;
+    --debug|-debug)
+      cmd_debug
+    ;;
+    *)
+      info "info" "Unknown info flag passed: $1."
+      return;
+    ;;
+  esac
+}
+
+cmd_debug() {
   debug $FUNCNAME
   info "---------------------------------------"
-  info "-------------   CLI INFO   ------------"
+  info "------------   CLI INFO   -------------"
   info "---------------------------------------"
   info ""
-  info "---------  PLATFORM INFO  -------------"
-  info "CLI DEFAULT PROFILE       = $(has_default_profile && echo $(get_default_profile) || echo "not set")"
-  info "CHE_VERSION               = ${CHE_VERSION}"
-  info "CHE_CLI_VERSION           = ${CHE_CLI_VERSION}"
-  info "CHE_UTILITY_VERSION       = ${CHE_UTILITY_VERSION}"
+  info "-----------  CODENVY INFO  ------------"
+  info "CODENVY_VERSION           = ${CODENVY_VERSION}"
+  info "CODENVY_INSTANCE          = ${CODENVY_INSTANCE}"
+  info "CODENVY_CONFIG            = ${CODENVY_CONFIG}"
+  info "CODENVY_HOST              = ${CODENVY_HOST}"
+  info "CODENVY_REGISTRY          = ${CODENVY_MANIFEST_DIR}"
+  info "CODENVY_DEVELOPMENT_MODE  = ${CODENVY_DEVELOPMENT_MODE}"
+  info "CODENVY_DEVELOPMENT_REPO  = ${CODENVY_DEVELOPMENT_REPO}"
+  info "CODENVY_BACKUP_FOLDER     = ${CODENVY_BACKUP_FOLDER}"
+  info ""  
+  info "-----------  PLATFORM INFO  -----------"
+#  info "CLI DEFAULT PROFILE       = $(has_default_profile && echo $(get_default_profile) || echo "not set")"
+  info "CLI_VERSION               = ${CHE_CLI_VERSION}"
   info "DOCKER_INSTALL_TYPE       = $(get_docker_install_type)"
   info "DOCKER_HOST_IP            = ${GLOBAL_GET_DOCKER_HOST_IP}"
   info "IS_NATIVE                 = $(is_native && echo "YES" || echo "NO")"
   info "IS_WINDOWS                = $(has_docker_for_windows_client && echo "YES" || echo "NO")"
   info "IS_DOCKER_FOR_WINDOWS     = $(is_docker_for_windows && echo "YES" || echo "NO")"
+  info "HAS_DOCKER_FOR_WINDOWS_IP = $(has_docker_for_windows_client && echo "YES" || echo "NO")"
   info "IS_DOCKER_FOR_MAC         = $(is_docker_for_mac && echo "YES" || echo "NO")"
   info "IS_BOOT2DOCKER            = $(is_boot2docker && echo "YES" || echo "NO")"
-  info "HAS_DOCKER_FOR_WINDOWS_IP = $(has_docker_for_windows_ip && echo "YES" || echo "NO")"
   info "IS_MOBY_VM                = $(is_moby_vm && echo "YES" || echo "NO")"
-  info "HAS_CHE_ENV_VARIABLES     = $(has_che_env_variables && echo "YES" || echo "NO")"
-  info "HAS_TEMP_CHE_PROPERTIES   = $(has_che_properties && echo "YES" || echo "NO")"
-  info "IS_INTERACTIVE            = $(has_interactive && echo "YES" || echo "NO")"
-  info "IS_PSEUDO_TTY             = $(has_pseudo_tty && echo "YES" || echo "NO")"
   info ""
 }
 
-run_connectivity_tests() {
+cmd_network() {
   debug $FUNCNAME
+
+  if [ -z ${IMAGE_PUPPET+x} ]; then
+    get_image_manifest $CODENVY_VERSION
+  fi
+
   info ""
   info "---------------------------------------"
   info "--------   CONNECTIVITY TEST   --------"
@@ -1027,9 +1053,9 @@ run_connectivity_tests() {
                           --write-out "%{http_code}") || echo "28" > /dev/null
 
   if [ "${HTTP_CODE}" = "200" ]; then
-      info "Browser    => Workspace Agent (localhost)   : Connection succeeded"
+      info "Browser    => Workspace Agent (localhost): Connection succeeded"
   else
-      info "Browser    => Workspace Agent (localhost)   : Connection failed"
+      info "Browser    => Workspace Agent (localhost): Connection failed"
   fi
 
   ### TEST 1a: Simulate browser ==> workspace agent HTTP connectivity
@@ -1044,32 +1070,32 @@ run_connectivity_tests() {
   fi
 
   ### TEST 2: Simulate Che server ==> workspace agent (external IP) connectivity
-#  export HTTP_CODE=$(docker run --rm --name fakeserver \
-#                                --entrypoint=curl \
-#                                ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} \
-#                                  -I ${AGENT_EXTERNAL_IP}:${AGENT_EXTERNAL_PORT}/alpine-release \
-#                                 -s -o /dev/null \
-#                                  --write-out "%{http_code}")
-
-#  if [ "${HTTP_CODE}" = "200" ]; then
-#      info "Server     => Workspace Agent (External IP): Connection succeeded"
-#  else
-#      info "Server     => Workspace Agent (External IP): Connection failed"
-#  fi
+  export HTTP_CODE=$(docker run --rm --name fakeserver \
+                                --entrypoint=curl \
+                                ${IMAGE_CODENVY} \
+                                  -I ${AGENT_EXTERNAL_IP}:${AGENT_EXTERNAL_PORT}/alpine-release \
+                                  -s -o /dev/null \
+                                  --write-out "%{http_code}")
+ 
+  if [ "${HTTP_CODE}" = "200" ]; then
+      info "Server     => Workspace Agent (External IP): Connection succeeded"
+  else
+      info "Server     => Workspace Agent (External IP): Connection failed"
+  fi
 
   ### TEST 3: Simulate Che server ==> workspace agent (internal IP) connectivity
-#  export HTTP_CODE=$(docker run --rm --name fakeserver \
-#                                --entrypoint=curl \
-#                                ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} \
-#                                  -I ${AGENT_INTERNAL_IP}:${AGENT_INTERNAL_PORT}/alpine-release \
-#                                  -s -o /dev/null \
-#                                  --write-out "%{http_code}")
+  export HTTP_CODE=$(docker run --rm --name fakeserver \
+                                --entrypoint=curl \
+                                ${IMAGE_CODENVY} \
+                                  -I ${AGENT_INTERNAL_IP}:${AGENT_INTERNAL_PORT}/alpine-release \
+                                  -s -o /dev/null \
+                                  --write-out "%{http_code}")
 
-#  if [ "${HTTP_CODE}" = "200" ]; then
-#      info "Server     => Workspace Agent (Internal IP): Connection succeeded"
-#  else
-#      info "Server     => Workspace Agent (Internal IP): Connection failed"
-#  fi
+  if [ "${HTTP_CODE}" = "200" ]; then
+      info "Server     => Workspace Agent (Internal IP): Connection succeeded"
+  else
+      info "Server     => Workspace Agent (Internal IP): Connection failed"
+  fi
 
   docker rm -f fakeagent > /dev/null
 }
