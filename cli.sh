@@ -910,7 +910,7 @@ cmd_restart() {
   else
     info "restart" "Restarting services..."
     log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy restart >> \"${LOGS}\" 2>&1"
-    docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart >> "${LOGS}" 2>&1
+    docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart >> "${LOGS}" 2>&1 || true
     check_if_booted
   fi
 }
