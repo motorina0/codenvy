@@ -12,6 +12,7 @@
 - [Updates](#Updates)
 - [Scaling](#Scaling)
 - [Backup and Recovery](#Backups)
+- [Development Mode](#development-mode)
 - [Migration](#migration)
 - [Monitoring](#Monitoring)
 - [CLI Reference](#cli_reference)
@@ -192,3 +193,13 @@ If you run `codenvy config`, Codenvy runs puppet to transform your puppet templa
 | Parameter | Description |
 |-----------|-------------|
 | `DEBUG` | Set this to `true` to enable entrypoint debugging. |
+
+## Development Mode
+
+By default Codenvy starts in a production mode, i.e Codenvy binaries come with `codenvy/codenvy:$TAG` image. When dev mode is turned on, your custom Codenvy binaries get mounted into the Codenvy container. Dev mode is turned on by exporting the following local environment variable and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
+
+`set DEFAULT_CODENVY_DEVELOPMENT_MODE="on"` - for Windows
+`export DEFAULT_CODENVY_DEVELOPMENT_MODE="on"`- for Mac and Linux
+`codenvy start/restart`
+
+Development mode implies that you have cloned and built https://github.com/codenvy/codenvy repository and run `codenvy` script from the root of this repository.
