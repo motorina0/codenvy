@@ -325,7 +325,7 @@ Usage: codenvy [COMMAND] [OPTIONS]
     destroy                              Stops services, and deletes codenvy instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a codenvy config from vars; run on any start / restart
-    upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
+    upgrade                              Upgrades Codenvy to a new version with data migrations and bakcups
     download [--pull|--force|--offline]  Pulls Docker images CODENVY_VERSION, or installed, codenvy.ver
     backup                               Backups codenvy configuration and data to CODENVY_BACKUP_FOLDER
     restore                              Restores codenvy configuration and data from CODENVY_BACKUP_FOLDER
