@@ -7,6 +7,7 @@
 - [Installation](#installation)
   - [Hosting]()
 - [Quick Start](#quick-start)
+- [Uninstall]()
 - [Offline Installation]()
 - [Configuration](#configuration)
 - [Logs and User Data](#logs-and-user-data)
@@ -160,7 +161,7 @@ pass: `password`
 ### Hosting
 We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
 
-## Quick Uninstall
+## Uninstall
 ```
 # Remove your Codevy configuration and destroy user projects and database
 codenvy destroy
@@ -176,7 +177,24 @@ rm -rf ~/.codenvy
 We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
 
 1. Get Docker Images
-While connected to the Internet and with access to DockerHub, download Codenvy's Docker images 
+While connected to the Internet and with access to DockerHub, download Codenvy's Docker images as a set of files with `codenvy offline`. Codenvy will download all dependent images and save them to `offline/*.tar` with each image saved as its own file. `CODENVY_VERSION` environment variable is used to determine which images to download unless you already have a Codenvy installation, then the value of `instance/codenvy.ver` will be used. There is about 1GB of data that will be saved.
+
+2. Get Codenvy CLI
+Save `codenvy.sh`, `cli.sh`, and if on Windows, `codenvy.bat`.
+
+3. Get Codenvy Stacks
+Out of the box, Codenvy has configured a few dozen stacks for popular programming languages and frameworks. These stacks use "recipes" which contain links to Docker images that are needed to create workspaces from these stacks. These workspace runtime images are not saved as part of `codenvy offline`. There are many of these images and they consume a lot of disk space. Most users do not require all of these stacks and most replace default stacks with custom stacks using their own Docker images. If you'd like to get the images that are associated with Codenvy's stacks:
+```
+docker save <codenvy-stack-image-name> > offline/<base-image-name>.tar
+```
+The list of images that Codenvy manages is sourced from Eclipse Che's [Dockerfiles repository](https://github.com/eclipse/che-dockerfiles/tree/master/recipes). Each folder is named the same way that our images are stored.  The `alpine_jdk8` folder represents the `codenvy/alpine_jdk8` Docker image, which you would save with `docker save codenvy/alpine_jdk8 > offline/alpine_jdk8.tar`.
+
+4. Start Offline
+Extract your files to an offline computer with Docker already configured. Install the CLI files to a directory on your path and ensure that they have execution permissions. Execute the CLI in the directory that has the `offline` sub-folder which contains your tar files. Then start Codenvy in `--offline` mode:
+```
+codenvy start --offline
+```
+When invoked with the `offline` parameter, the Codenvy CLI performs a preboot sequence, which loads all saved `offline/*.tar` images including any Codenvy stack images you saved. The preboot sequence takes place before any CLI configuration, which itself depends upon Docker. The `codenvy start`, `codenvy download`, and `codenvy init` commands support `--offline` mode which triggers this preboot seequence.
 
 ## Configuration
 All configuration is done with environment variables. Environment variables are stored in `/instance/codenvy.env`, a file that is generated during the `codenvy init` phase.
