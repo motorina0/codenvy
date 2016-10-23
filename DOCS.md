@@ -336,9 +336,9 @@ Usage: codenvy [COMMAND] [OPTIONS]
 ```
 
 ### `codenvy init`
-Initializes an empty directory with a Codenvy configuration and instance folder where user data and runtime configuration will be stored. This command creates two folders, `config` and `instance`. The `config` folder contains the `codenvy.ver` file which you can use to configure how the product is run. Other files in this folder are used by Codenvy's configuration system to structure the runtime microservices. 
+Initializes an empty directory with a Codenvy configuration and instance folder where user data and runtime configuration will be stored. Uses the values you set to `CODENVY_CONFIG` and `CODENVY_INSTANCE` to set these values, then they are set to `$PWD/config` and `$PWD/instance`. The `CODENVY_CONFIG` folder will get a `codenvy.env` file, which is the file you use to configure how Codenvy is configured and run. Other files in this folder are used by Codenvy's configuration system to structure the runtime microservices. 
 
-These variables can be set in your local environment shell before running and they will be respected during initialization and inserted as defaults into `config/codenvy.ver`:
+These variables can be set in your local environment shell before running and they will be respected during initialization and inserted as defaults into `CODENVY_CONFIG/codenvy.ver`:
 
 | Variable | Description |
 |----------|-------------|
