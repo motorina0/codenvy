@@ -1271,35 +1271,37 @@ cmd_network() {
 
 # Prints command that should be executed on a node to add it to swarm cluster
 cmd_add_node() {
-  echo "Execute next command on node to add it to the ${CHE_MINI_PRODUCT_NAME} workspace cluster:"
-  echo "bash <(curl -sSL http://${CODENVY_HOST}/api/nodes/script) --user <${CHE_MINI_PRODUCT_NAME} admin username> --password <${CHE_MINI_PRODUCT_NAME} admin password> --ip <node public IP>"
+  info "add-node" "1. SSH into the remote node to add."
+  info "add-node" "2. Execute this script:"
+  info "add-node" "   bash <(curl -sSL http://${CODENVY_HOST}/api/nodes/script) --user <${CHE_MINI_PRODUCT_NAME}-admin-user> --password <${CHE_MINI_PRODUCT_NAME}-admin-pass> --ip <node-ip>"
+  echo ""
+  info "add-node" "   Set '--ip' to the external IP or DNS of the node."
 }
 
 # Removes node from swarm cluster configuration and restarts swarm container
 cmd_remove_node() {
   if [ $# -eq 0 ]; then
-    error "No ip of node is provided"
-    return 1
-  fi
-  if [ $# -gt 1 ]; then
-    error "Remove node doesn't support multiple arguments"
+    error "No IP provided"
     return 1
   fi
 
-  node_ip=${1}
-  nodes_string=$(grep "^CODENVY_SWARM_NODES=" "${CODENVY_CONFIG}/codenvy.env" | sed "s/.*=//")
-  nodes_array=(${nodes_string//,/ })
-  new_nodes_var="CODENVY_SWARM_NODES="
-  for node in "${nodes_array[@]}"; do
-    if [ "${node/$node_ip}" = "$node" ] ; then
-      new_nodes_var+=${node}","
+  NODE_IP=${1}
+  NODES=$(grep "^CODENVY_SWARM_NODES=" "${CODENVY_CONFIG}/codenvy.env" | sed "s/.*=//")
+  NODES_ARRAY=(${NODES//,/ })
+  REMOVE_NODE="CODENVY_SWARM_NODES="
+  for NODE in "${NODES_ARRAY[@]}"; do
+    if [ "${NODE/$NODE_IP}" = "$NODE" ] ; then
+      REMOVE_NODE+=${NODE}","
     fi
   done
+
   # remove trailing coma
-  new_nodes_var=$(echo "${new_nodes_var}" | sed 's/\(.*\),/\1/g')
+  REMOVE_NODE=$(echo "${REMOVE_NODE}" | sed 's/\(.*\),/\1/g')
+
   ## TODO added "" for OSX - find portable solution
-  sed -i "" -e "s/^CODENVY_SWARM_NODES=.*/${new_nodes_var}/" "${CODENVY_CONFIG}/codenvy.env"
+  sed -i "" -e "s/^CODENVY_SWARM_NODES=.*/${REMOVE_NODE}/" "${CODENVY_CONFIG}/codenvy.env"
   
+  # TODO: Restart should not be needed.  Find way to deregister nodes.
   cmd_restart
 }
 
