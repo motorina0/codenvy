@@ -26,6 +26,10 @@ This packaging and deployment approach is relatively new. We do not yet consider
 ## Team
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
 
+## Architecture
+
+![Architecture]https://files.readme.io/bb7c29a-oie_SE4Wl537NcFG.png
+
 ## Issues
 Docker is a relatively new project and is actively tested by a thriving community.
 
