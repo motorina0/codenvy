@@ -21,7 +21,15 @@ Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, mu
 - [CLI Reference](#cli_reference)
 
 ## Beta
-This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016.
+This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016. Items to be added:
+
+1. `codenvy upgrade` is not yet implemented. You can switch between versions, but we do not yet support automatic data migration inside of images. 
+
+2. Networking overlay mode. If you are running a Codenvy cluster on different physical nodes and your users launch compose workspaces that themselves have multiple containers, there are cases where Swarm will place those different containers on different physical nodes. This is great for scalability. However, our default networking mode is `bridge`, which will prevent those workspace containers from seeing each other, and your users will scratch their heads. We are testing an `overlay` mode which configurs `etcd` automatically that will let workspace containers see one another regardless of where Swarm places their operation.
+
+3. HTTP/S. We are working to make configuration of SSL and HTTP/S a single line so that you can swap between configurations. The current version only supports HTTP.
+
+4. `codenvy.env` documentation. Currently, we expect all configuration of Codenvy to be done by users in `CODENVY_CONFIG/codenvy.env`. All parameters are currently supported, but they are not provided with default documentation in the environment file. Temporarily, you can inspect how `codenvy.pp` is configured at `docs.codenvy.com` or by studying `CODENVY_CONFIG/manifests/codenvy.pp`. 
 
 ## Team
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
@@ -190,20 +198,20 @@ rm -rf ~/.codenvy
 ## Offline Installation
 We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
 
-1. Get Docker Images
+#### Save Docker Images
 While connected to the Internet and with access to DockerHub, download Codenvy's Docker images as a set of files with `codenvy offline`. Codenvy will download all dependent images and save them to `offline/*.tar` with each image saved as its own file. `CODENVY_VERSION` environment variable is used to determine which images to download unless you already have a Codenvy installation, then the value of `instance/codenvy.ver` will be used. There is about 1GB of data that will be saved.
 
-2. Get Codenvy CLI
+#### Save Codenvy CLI
 Save `codenvy.sh`, `cli.sh`, and if on Windows, `codenvy.bat`.
 
-3. Get Codenvy Stacks
+#### Save Codenvy Stacks
 Out of the box, Codenvy has configured a few dozen stacks for popular programming languages and frameworks. These stacks use "recipes" which contain links to Docker images that are needed to create workspaces from these stacks. These workspace runtime images are not saved as part of `codenvy offline`. There are many of these images and they consume a lot of disk space. Most users do not require all of these stacks and most replace default stacks with custom stacks using their own Docker images. If you'd like to get the images that are associated with Codenvy's stacks:
 ```
 docker save <codenvy-stack-image-name> > offline/<base-image-name>.tar
 ```
 The list of images that Codenvy manages is sourced from Eclipse Che's [Dockerfiles repository](https://github.com/eclipse/che-dockerfiles/tree/master/recipes). Each folder is named the same way that our images are stored.  The `alpine_jdk8` folder represents the `codenvy/alpine_jdk8` Docker image, which you would save with `docker save codenvy/alpine_jdk8 > offline/alpine_jdk8.tar`.
 
-4. Start Offline
+#### Start Offline
 Extract your files to an offline computer with Docker already configured. Install the CLI files to a directory on your path and ensure that they have execution permissions. Execute the CLI in the directory that has the `offline` sub-folder which contains your tar files. Then start Codenvy in `--offline` mode:
 ```
 codenvy start --offline
@@ -314,4 +322,13 @@ You can control the nature of how Codenvy downloads these images with command li
 | `--force` | Performs a forced removal of the local image using `docker rmi` and then pulls it again (anew) from DockerHub. You can use this as a way to clean your local cache and ensure that all images are new. |
 | `--ofline` | Loads Docker images from `offline/*.tar` folder during a pre-boot mode of the CLI. Used if you are performing an installation or start while disconnected from the Internet. |
 
-`codenvy config` 
+### `codenvy config`
+Generates a Codenvy instance configuration using the templates and environment variables stored in `CODENVY_CONFIG`. Uses puppet to generate the configuration files for Codenvy, haproxy, swarm, socat, nginx, and postgres which are mounted when Codenvy services are started. This command is executed on every `start` or `restart`.
+
+If you have set `CODENVY_VERSION` environment variable and it does not match the version that is in `CODENVY_INSTANCE/codenvy.ver`, then the configuration will abort to prevent you from running a configuration for a different version than what is currently installed.
+
+This command respects `--no-force`, `--pull`, `--force`, and `--offline`.
+
+### `codenvy start`
+Starts Codenvy and its services using `docker-compose`.
+
