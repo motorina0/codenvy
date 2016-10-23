@@ -117,15 +117,6 @@ node default {
 ################################
 # Mail server configuration
 #
-# Use local mail server postfix to send mails
-# this true by defaul and don't require any additional configuration,
-# please set this to "false" if custom mail server configuration required.
-  $use_local_mail_host = getValue("CODENVY_USE_LOCAL_MAIL_HOST","true")
-#
-# Custom mail server configuration
-# properties below will be ignored if $use_local_mail_host is set to "true"
-# In order to configure custom mail server, $use_local_mail_host property must be set to "false"
-#
   $mail_host = getValue("CODENVY_MAIL_HOST","smtp.example.com")
   $mail_host_port = getValue("CODENVY_MAIL_HOST_PORT","465")
   $mail_use_ssl = getValue("CODENVY_MAIL_USE_SSL","true")

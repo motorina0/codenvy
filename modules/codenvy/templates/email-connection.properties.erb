@@ -3,12 +3,6 @@
 # PLEASE DON'T MODIFY BY HAND
 # ###################################
 
-<% if scope.lookupvar('codenvy::use_local_mail_host') == "true" -%>
-mail.host=localhost
-mail.port=25
-mail.transport.protocol=smtp
-mail.smtp.auth=false
-<% else -%>
 mail.host=<%= scope.lookupvar('codenvy::mail_host') %>
 mail.port=<%= scope.lookupvar('codenvy::mail_host_port') %>
 mail.ssl=<%= scope.lookupvar('codenvy::mail_use_ssl') %>
@@ -19,4 +13,3 @@ mail.smtp.socketFactory.fallback=<%= scope.lookupvar('codenvy::mail_smtp_socketF
 mail.smtp.socketFactory.port=<%= scope.lookupvar('codenvy::mail_smtp_socketFactory_port') %>
 mail.smtp.auth.username=<%= scope.lookupvar('codenvy::mail_smtp_auth_username') %>
 mail.smtp.auth.password=<%= scope.lookupvar('codenvy::mail_smtp_auth_password') %>
-<% end -%>
