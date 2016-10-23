@@ -91,6 +91,7 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     stop                                 Stops ${CHE_MINI_PRODUCT_NAME} server
     restart [--force]                    Restart ${CHE_MINI_PRODUCT_NAME} server
     destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
     upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
     download [--pull|--force|--offline]  Pulls Docker images to install offline CODENVY_VERSION
@@ -122,7 +123,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|offline|update|add-node|remove-node|list-nodes|info|network|debug|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|rmi|config|upgrade|download|backup|restore|offline|update|add-node|remove-node|list-nodes|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -163,6 +164,10 @@ cli_cli() {
     destroy)
       shift 
       cmd_destroy "$@"
+    ;;
+    rmi)
+      shift 
+      cmd_rmi "$@"
     ;;
     upgrade)
       shift
@@ -978,6 +983,34 @@ cmd_destroy() {
   info "destroy" "Deleting config"
   log "rm -rf \"${CODENVY_CONFIG}\""
   rm -rf "${CODENVY_CONFIG}"
+}
+
+cmd_rmi() {
+  info "rmi" "Checking registry for version '$CODENVY_VERSION' images"
+  if ! has_version_registry $CODENVY_VERSION; then
+    version_error $CODENVY_VERSION
+    return 1;  
+  fi
+
+  WARNING="rmi !!! Removing images disables codenvy and forces a pull !!!"
+  if ! confirm_operation "${WARNING}" "$@"; then
+    return;
+  fi
+
+  IMAGE_LIST=$(cat "$CODENVY_MANIFEST_DIR"/$CODENVY_VERSION/images)
+  IFS=$'\n'
+  info "rmi" "Removing ${CHE_MINI_PRODUCT_NAME} Docker images..."
+
+  for SINGLE_IMAGE in $IMAGE_LIST; do
+    VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
+    info "rmi" "Removing $VALUE_IMAGE..."
+    log "docker rmi -f ${VALUE_IMAGE} >> \"${LOGS}\" 2>&1 || true"
+    docker rmi -f $VALUE_IMAGE >> "${LOGS}" 2>&1 || true
+  done
+
+  # This is Codenvy's singleton instance with the version registry
+  info "rmi" "Removing codenvy/version"
+  docker rmi -f codenvy/version >> "${LOGS}" 2>&1 || true
 }
 
 cmd_upgrade() {

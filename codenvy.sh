@@ -46,6 +46,7 @@ init_logging() {
   # Initialize logging into a log file
   DEFAULT_CODENVY_CLI_LOGS_FOLDER="${CLI_DIR}"
   CODENVY_CLI_LOGS_FOLDER="${CODENVY_CLI_LOGS_FOLDER:-${DEFAULT_CODENVY_CLI_LOGS_FOLDER}}"
+
   # Ensure logs folder exists
   LOGS="${CODENVY_CLI_LOGS_FOLDER}/cli.log"
   mkdir -p "${CODENVY_CLI_LOGS_FOLDER}"
@@ -203,7 +204,7 @@ check_docker() {
   if [ "$(docker images -q codenvy/che-ip:nightly 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image codenvy/che-ip:nightly"
     log "docker pull codenvy/che-ip:nightly >> \"${LOGS}\" 2>&1"
-    docker pull codenvy/che-ip:nightly >> \"${LOGS}\" 2>&1
+    docker pull codenvy/che-ip:nightly >> "${LOGS}" 2>&1
   fi
 
   if [ "$(docker images -q codenvy/version 2> /dev/null)" = "" ]; then
