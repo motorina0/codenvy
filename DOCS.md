@@ -6,12 +6,14 @@ Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, mu
 - [Architecture](#architecture)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
-  - [Hosting]()
+- [Hosting](#hosting)
 - [Quick Start](#quick-start)
 - [Uninstall]()
-- [Offline Installation]()
+- [Offline Installation](#offline-installation)
 - [Configuration](#configuration)
 - [Logs and User Data](#logs-and-user-data)
+- [SMTP Configuration](#smpt-configuration)
+- [oAuth](#oAuth)
 - [Updates](#Updates)
 - [Scaling](#Scaling)
 - [Backup and Recovery](#Backups)
@@ -144,7 +146,7 @@ HTTPS_PROXY_FOR_CODENVY_WORKSPACES=
 NO_PROXY_FOR_CODENVY_WORKSPACES=
 ```
 
-`NO_PROXY` is required is you use a fake DNS name, so that Java and any system utilities do not attempt to go through proxy when resolving such a DNS name. By default, Codenvy is configured to use IP address as `$CODENVY_HOST`, however, you may reconfigure it in `/instance/codenvy.env`. 
+`NO_PROXY` is required is you use a fake DNS name, so that Java and any system utilities do not attempt to go through proxy when resolving such a DNS name. By default, Codenvy is configured to use IP address as `$CODENVY_HOST`, however, you may reconfigure it in `/instance/codenvy.env`.
 
 ## Quick Start
 `codenvy start`
@@ -254,6 +256,40 @@ Due to differences in file system types between NTFS and what is commonly used i
 
 If you need to backup your Postgres data, run the following command:
 `TODO - postgres backup commands`
+
+## SMTP Configuration
+
+By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
+
+```
+CODENVY_MAIL_HOST=smtp.gmail.com
+CODENVY_MAIL_HOST_PORT=465
+CODENVY_MAIL_SMTP_AUTH=true
+СODENVY_MAIL_TRANSPORT_PROTOCOL=smtp
+CODENVY_MAIL_SMTP_AUTH_USERNAME=example@gmail.com
+CODENVY_MAIL_SMTP_AUTH_PASSWORD=password
+CODENVY_MAIL_SMTP_SOCKETFACTORY_PORT=465
+CODENVY_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
+CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
+```
+
+## oAuth
+
+Codenvy is shipped with a preconfigured GitHub oAuth application that works for `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to environment file and restart Codenvy.
+
+If you have a custom DNS name, you need to register a GitHub oAuth application with `http://<your_hostname>/api/oauth/callback` as a callback URL, provide Client ID and Secret in `codenvy.env` and restart Codenvy:
+
+```
+CODENVY_GITHUB_CLIENT_ID=yourID
+CODENVY_GITHUB_SECRET=yourSecret
+```
+
+Google oAuth is configured in the exact same way:
+
+```
+CODENVY_GOOGLE_CLIENT_ID=yourID
+CODENVY_GOOGLE_SECRET=yourSecret
+```
 
 ## Development Mode
 For Codenvy developers that are building and customizing Codenvy from its source repository, there is a development that maps the runtime containers to your source repository. If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
