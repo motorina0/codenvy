@@ -19,7 +19,7 @@ Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, mu
   - [Hosting](#hosting)
 - [Uninstall]()
 - [Configuration](#configuration)
-  - [SMTP Configuration](#smtp-configuration)
+  - [SMTP](#smtp-configuration)
   - [oAuth](#oauth)
 - [Logs and User Data](#logs-and-user-data)
 - [Upgrading](#Updates)
@@ -144,25 +144,28 @@ codenvy help
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
 ### Proxies
-We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are two separate settings:
-1. Configuring Docker's daemon for proxy access so that Codenvy can download our images.
-2. Configuring Codenvy's system settings to determine how user workspaces will proxy (or not) to the Internet.
+We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are three proxy configurations:
+1. Configuring Docker proxy access so that Codenvy can download images from DockerHub.
+2. Configuring Codenvy's system containers so that internal services can proxy to the Internet.
+3. Optionally, configuring workspace proxy settings to allow users within a workspace to proxy to the Internet.
 
-Before starting Codenvy or adding nodes for scaling, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). You must set each physical host node that will run Codenvy with proxy access.
+Before starting Codenvy, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). If you plan to scale Codenvy with multiple host nodes, each host node must have its Docker daemon configured for proxy access.
 
-Docker proxy configuration works for Docker daemon itself and running containers. However, Java requires proxy environment variables in `JAVA_OPTS`. This concerns both Codenvy server and workspace agents that run in workspace containers. Proxy settings are configured in `/CODENVY_INSTANCE/codenvy.env` file:
-
+Codenvy's system runs on Java, and the JVM requires proxy environment variables in our `JAVA_OPTS`. We use the JVM for the core Codenvy server and the workspace agents that run within each workspace. You must set the proxy parameters for these system properties `/CODENVY_INSTANCE/codenvy.env`. Please be mindful of the proxy URL formatting. Proxies are unforgiving if do not enter the URL perfectly, inclduing the protocol, port and whether they allow a trailing slash/.
 ```
-CODENVY_HTTP_PROXY_FOR_CODENVY=
-CODENVY_HTTPS_PROXY_FOR_CODENVY=
-CODENVY_NO_PROXY_FOR_CODENVY=
-
-HTTP_PROXY_FOR_CODENVY_WORKSPACES=
-HTTPS_PROXY_FOR_CODENVY_WORKSPACES=
-NO_PROXY_FOR_CODENVY_WORKSPACES=
+CODENVY_HTTP_PROXY_FOR_CODENVY=http://myproxy.com:8001/
+CODENVY_HTTPS_PROXY_FOR_CODENVY=http://myproxy.com:8001/
+CODENVY_NO_PROXY_FOR_CODENVY=<ip-or-domains-that-do-not-require-proxy-access>
 ```
 
-`NO_PROXY` is required is you use a fake DNS name, so that Java and any system utilities do not attempt to go through proxy when resolving such a DNS name. By default, Codenvy is configured to use IP address as `CODENVY_HOST`, however, you may reconfigure it in `/CODENVY_INSTANCE/codenvy.env`.
+If you would like your users to have proxified access to the Internet from within their workspace, those workspace runtimes need to have proxy settings applied to their environment variables in their .bashrc or equivalent. Configuring these parameters will have Codenvy automatically configure new workspaces with the proper environment variables. 
+```
+HTTP_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
+HTTPS_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
+NO_PROXY_FOR_CODENVY_WORKSPACES=<ip-or-domains-that-do-not-require-proxy-access>
+```
+
+`NO_PROXY` is required is you use a fake DNS, so that Java and other system utilities avoid accessing a proxy for internal communications or resolving a DNS name.
 
 ## Offline Installation
 We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
@@ -239,7 +242,7 @@ You can run `codenvy init` to install a new configuration into an empty director
 
 If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `/instance`. Each time you start Codenvy, we automatically rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
 
-### SMTP Configuration
+### SMTP
 By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
 
 ```
@@ -255,18 +258,15 @@ CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
 ```
 
 ### oAuth
+You can configure Google, GitHub, Microsoft, BitBucket, or WSO2 oAuth for use when users login or create an account.
 
-Codenvy is shipped with a preconfigured GitHub oAuth application that works for `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to environment file and restart Codenvy.
-
-If you have a custom DNS name, you need to register a GitHub oAuth application with `http://<your_hostname>/api/oauth/callback` as a callback URL, provide Client ID and Secret in `codenvy.env` and restart Codenvy:
-
+Codenvy is shipped with a preconfigured GitHub oAuth application for the `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to `CODENVY_CONFIG/codenvy.env` and restart. If you have a custom DNS, you need to register a GitHub oAuth application with GitHub's oAuth registration service. You will be asked for the callback URL, which is `http://<your_hostname>/api/oauth/callback`. You will receive from GitHub a client ID and secret, which must be added to `codenvy.env`:
 ```
 CODENVY_GITHUB_CLIENT_ID=yourID
 CODENVY_GITHUB_SECRET=yourSecret
 ```
 
-Google oAuth is configured in the exact same way:
-
+Google oAuth (and others) are configured the same:
 ```
 CODENVY_GOOGLE_CLIENT_ID=yourID
 CODENVY_GOOGLE_SECRET=yourSecret
@@ -302,6 +302,9 @@ Due to differences in file system types between NTFS and what is commonly used i
 
 If you need to backup your Postgres data, run the following command:
 `TODO - postgres backup commands`
+
+## Scaling
+For Codenvy developers that are building and customizing Codenvy from its source repository, there is a development that maps the 
 
 ## Development Mode
 For Codenvy developers that are building and customizing Codenvy from its source repository, there is a development that maps the runtime containers to your source repository. If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
