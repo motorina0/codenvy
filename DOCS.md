@@ -56,24 +56,24 @@ In your issue report please make sure you provide the following information:
 ## System Requirements
 Codenvy installs on Linux, Mac and Windows. 
 
-Software:
+#### Software
 * Docker 11.1+
 * Docker Compose 1.8+. 
 * Bash
 
 Docker for Mac and Windows have compose pre-installed. See: [Install Docker Compose on Linux](https://docs.docker.com/compose/install/). The Docker Toolbox for Windows installs [Git Bash for Windows](https://git-for-windows.github.io/), which is needed to run the CLI, a cross-platform set of bash scripts.
 
-System:
+#### Hardware
 * 2 cores
 * 3GB RAM
 * 3GB disk space
 
 This will let you install Codenvy and run a single workspace. Codenvy's Docker images consume about 800MB of disk and the Docker images for your workspace templates can each range from 5MB up to 1.5GB. Codenvy and its dependent core containers will consume about 500MB of RAM, and your running workspaces will each require at least 250MB RAM, depending upon user requirements and complexity of the workspace code and intellisense.
 
-Docker in a VM:
+#### Docker in a VM
 Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all variations that launch virtual machines that contain a Docker daemon that allows you to run Docker. We recommend increasing your default VM size to at least 4GB. Each virtualization solution has different requirements around mounting VM folders to your host machine - please enable this for your OS so that Codenvy data is persisted on your host disk.
 
-Workspace Requirements:
+#### Workspaces
 Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
 
 We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
@@ -83,7 +83,7 @@ In the non-container installation version of Codenvy, this requirement does not 
 ## Installation
 Get the Codenvy CLI. The Codenvy images and supporting utilities are downloaded and maintained by the CLI. The CLI also provides utilities for downloading an offline bundle to run Codenvy while disconnected from the network.
 
-### LINUX
+### Linux
 ```
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > /usr/local/bin/codenvy
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > /usr/local/bin/cli.sh
@@ -110,7 +110,7 @@ sudo ifconfig lo0 alias $DOCKER_VM_IP
 # Add this to your ~/.bash_profile to have it activated in each shell window
 ```
 
-### WINDOWS
+### Windows
 ```
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.sh > che.sh
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.bat > che.bat
@@ -125,13 +125,17 @@ codenvy help
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
 ### Proxies
-We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). This requires two level of settings for proxy operation:
+We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are two separate settings:
 1. Configuring Docker's daemon for proxy access so that Codenvy can download our images.
 2. Configuring Codenvy's system settings to determine how user workspaces will proxy (or not) to the Internet.
 
+Before starting Codenvy or adding nodes for scaling, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). You must set each physical host node that will run Codenvy with proxy access.
+
 ## Quick Start
 `codenvy start`
-This installs a Codenvy configuration, downloads Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. A successful start will display:
+This installs a Codenvy configuration, downloads Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. You do not need root access to start Codenvy, unless your environment requires it for Docker operations. You will need write access to the current directory and to `~/.codenvy` where certain CLI and manifest information is stored.
+
+A successful start will display:
 ```
 INFO: (codenvy cli): Downloading cli-latest
 INFO: (codenvy cli): Checking registry for version 'nightly' images
@@ -155,6 +159,18 @@ pass: `password`
 
 ### Hosting
 We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
+
+## Quick Uninstall
+```
+# Remove your Codevy configuration and destroy user projects and database
+codenvy destroy
+
+# Deletes Codenvy's images from your Docker registry
+codenvy rmi
+
+# Removes CLI logs, configuration and manifest data
+rm -rf ~/.codenvy
+```
 
 ## Offline Installation
 We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
