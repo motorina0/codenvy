@@ -2,7 +2,7 @@
 - [Introduction](#Introduction)
 - [Team](#Team)
 - [Issues](#Issues)
-- [Architecture](#Architecture)
+- [Architecture](#architecture)
 - [Installation Types](#Installation_types)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
@@ -28,7 +28,7 @@ See [Contributors](../../graphs/contributors) for the complete list of developer
 
 ## Architecture
 
-![Architecture](https://files.readme.io/bb7c29a-oie_SE4Wl537NcFG.png)
+![Architecture](https://cloud.githubusercontent.com/assets/5337267/19623944/f2366c74-989d-11e6-970b-db0ff41f618a.png)
 
 ## Issues
 Docker is a relatively new project and is actively tested by a thriving community.
