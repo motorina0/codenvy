@@ -1,5 +1,6 @@
 # Codenvy Installation and Operation
-- [Introduction](#Introduction)
+Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, multi-tenant, and distributed implementation of Eclipse Che with team management and a DevOps workspace platform. This page documents how to install and operate a clustered Codenvy using Docker.
+
 - [Team](#Team)
 - [Issues](#Issues)
 - [Architecture](#architecture)
@@ -18,9 +19,6 @@
 - [Migration](#migration)
 - [Monitoring](#Monitoring)
 - [CLI Reference](#cli_reference)
-
-## Introduction
-Packaging to configure and run [Codenvy](https://codenvy.com) as a clustered set of Docker containers using Docker compose. 
 
 ## Beta
 This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016.
@@ -242,7 +240,7 @@ If you need to backup your Postgres data, run the following command:
 `TODO - postgres backup commands`
 
 ## Development Mode
-If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
+For Codenvy developers that are building and customizing Codenvy from its source repository, there is a development that maps the runtime containers to your source repository. If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
 ```
 CODENVY_DEVELOPMENT_MODE="on"
 CODENVY_DEVELOPMENT_REPO=<path-codenvy-repo>
