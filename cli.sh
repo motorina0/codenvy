@@ -191,10 +191,6 @@ cli_cli() {
       shift
       cmd_offline
     ;;
-    update)
-      shift
-      cmd_update
-    ;;
     info)
       shift
       cmd_info "$@"
@@ -901,9 +897,10 @@ cmd_start() {
 
   # Begin tests of open ports that we require
   info "start" "Preflight checks"
-  text   "         port 80:  $(port_open 80 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
-  text   "         port 443: $(port_open 443 && echo "${GREEN}[OK]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
-  if ! $(port_open 80) || ! $(port_open 443); then
+  text   "         port 80 (http):       $(port_open 80 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
+  text   "         port 443 (https):     $(port_open 443 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
+  text   "         port 5000 (registry): $(port_open 5000 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
+  if ! $(port_open 80) || ! $(port_open 443) || ~ $(port_open 5000); then
     error "Ports required to run codenvy are used by another program. Aborting..."
     return 1;
   fi
