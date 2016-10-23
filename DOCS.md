@@ -31,7 +31,9 @@ This packaging and deployment approach is relatively new. We do not yet consider
 
 3. HTTP/S. We are working to make configuration of SSL and HTTP/S a single line so that you can swap between configurations. The current version only supports HTTP.
 
-4. `codenvy.env` documentation. Currently, we expect all configuration of Codenvy to be done by users in `CODENVY_CONFIG/codenvy.env`. All parameters are currently supported, but they are not provided with default documentation in the environment file. Temporarily, you can inspect how `codenvy.pp` is configured at `docs.codenvy.com` or by studying `CODENVY_CONFIG/manifests/codenvy.pp`. 
+4. `codenvy.env` documentation. Currently, we expect all configuration of Codenvy to be done by users in `CODENVY_CONFIG/codenvy.env`. All parameters are currently supported, but they are not provided with default documentation in the environment file. Temporarily, you can inspect how `codenvy.pp` is configured at `docs.codenvy.com` or by studying `CODENVY_CONFIG/manifests/codenvy.pp`.
+
+5. NTFS backups. Due to incompatibilities between NTFS and other file systems, Windows will have their Postgres data stored in a named volume within the boot2docker or Docker for Windows. User data is persisted, but if the VM that you are using is wiped and restarted, Codenvy's Postgres data will be lost. We will add an ability to extract this information with `codenvy backup` and `codenvy restore`.
 
 ## Team
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
@@ -223,18 +225,46 @@ codenvy start --offline
 When invoked with the `offline` parameter, the Codenvy CLI performs a preboot sequence, which loads all saved `offline/*.tar` images including any Codenvy stack images you saved. The preboot sequence takes place before any CLI configuration, which itself depends upon Docker. The `codenvy start`, `codenvy download`, and `codenvy init` commands support `--offline` mode which triggers this preboot seequence.
 
 ## Configuration
-All configuration is done with environment variables. Environment variables are stored in `/instance/codenvy.env`, a file that is generated during the `codenvy init` phase.
+All configuration is done with environment variables. Environment variables are stored in `CODENVY_CONFIG/codenvy.env`, a file that is generated during the `codenvy init` phase.
 
-When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, this folder is different from `/instance/config`, which has instance-specific configuration for a Codenvy installation. You should not need to modify the contents of `/config`.
+When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, this folder is different from `CODENVY_INSTANCE/config`, which has instance-specific configuration for a Codenvy installation. 
 
 You can run `codenvy init` to install a new configuration into an empty directory. This command uses the `codenvy/init:<version>` Docker container to deliver a version-specific set of puppet templates into the folder.
 
 If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `/instance`. Each time you start Codenvy, we automatically rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
 
-### Available Configuration Parameters
-| Parameter | Description |
-|-----------|-------------|
-| `DEBUG` | Set this to `true` to enable entrypoint debugging. |
+### SMTP Configuration
+By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
+
+```
+CODENVY_MAIL_HOST=smtp.gmail.com
+CODENVY_MAIL_HOST_PORT=465
+CODENVY_MAIL_SMTP_AUTH=true
+СODENVY_MAIL_TRANSPORT_PROTOCOL=smtp
+CODENVY_MAIL_SMTP_AUTH_USERNAME=example@gmail.com
+CODENVY_MAIL_SMTP_AUTH_PASSWORD=password
+CODENVY_MAIL_SMTP_SOCKETFACTORY_PORT=465
+CODENVY_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
+CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
+```
+
+### oAuth
+
+Codenvy is shipped with a preconfigured GitHub oAuth application that works for `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to environment file and restart Codenvy.
+
+If you have a custom DNS name, you need to register a GitHub oAuth application with `http://<your_hostname>/api/oauth/callback` as a callback URL, provide Client ID and Secret in `codenvy.env` and restart Codenvy:
+
+```
+CODENVY_GITHUB_CLIENT_ID=yourID
+CODENVY_GITHUB_SECRET=yourSecret
+```
+
+Google oAuth is configured in the exact same way:
+
+```
+CODENVY_GOOGLE_CLIENT_ID=yourID
+CODENVY_GOOGLE_SECRET=yourSecret
+```
 
 ## Logs and User Data
 When Codenvy initializes itself, it creates a `/instance` folder in the directory to store logs, user data, the database, and instance-specific configuration. Codenvy's containers are started with `host:container` volume bindings to mount this information into and out of the containers that require it. You can save the `/instance` folder as a backup for an entire Codenvy instance. 
@@ -266,40 +296,6 @@ Due to differences in file system types between NTFS and what is commonly used i
 
 If you need to backup your Postgres data, run the following command:
 `TODO - postgres backup commands`
-
-## SMTP Configuration
-
-By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
-
-```
-CODENVY_MAIL_HOST=smtp.gmail.com
-CODENVY_MAIL_HOST_PORT=465
-CODENVY_MAIL_SMTP_AUTH=true
-СODENVY_MAIL_TRANSPORT_PROTOCOL=smtp
-CODENVY_MAIL_SMTP_AUTH_USERNAME=example@gmail.com
-CODENVY_MAIL_SMTP_AUTH_PASSWORD=password
-CODENVY_MAIL_SMTP_SOCKETFACTORY_PORT=465
-CODENVY_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
-CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
-```
-
-## oAuth
-
-Codenvy is shipped with a preconfigured GitHub oAuth application that works for `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to environment file and restart Codenvy.
-
-If you have a custom DNS name, you need to register a GitHub oAuth application with `http://<your_hostname>/api/oauth/callback` as a callback URL, provide Client ID and Secret in `codenvy.env` and restart Codenvy:
-
-```
-CODENVY_GITHUB_CLIENT_ID=yourID
-CODENVY_GITHUB_SECRET=yourSecret
-```
-
-Google oAuth is configured in the exact same way:
-
-```
-CODENVY_GOOGLE_CLIENT_ID=yourID
-CODENVY_GOOGLE_SECRET=yourSecret
-```
 
 ## Development Mode
 For Codenvy developers that are building and customizing Codenvy from its source repository, there is a development that maps the runtime containers to your source repository. If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
@@ -362,7 +358,7 @@ You can control the nature of how Codenvy downloads these images with command li
 | `--no-force` | Default behavior. Will download an image if not found locally. A local check of the image will see if an image of a matching name is in your local registry and then skip the pull if it is found. This mode does not check DockerHub for a newer version of the same image. |
 | `--pull` | Will always perform a `docker pull` when an image is requested. If there is a newer version of the same tagged image at DockerHub, it will pull it, or use the one in local cache. This keeps your images up to date, but execution is slower. |
 | `--force` | Performs a forced removal of the local image using `docker rmi` and then pulls it again (anew) from DockerHub. You can use this as a way to clean your local cache and ensure that all images are new. |
-| `--ofline` | Loads Docker images from `offline/*.tar` folder during a pre-boot mode of the CLI. Used if you are performing an installation or start while disconnected from the Internet. |
+| `--offline` | Loads Docker images from `offline/*.tar` folder during a pre-boot mode of the CLI. Used if you are performing an installation or start while disconnected from the Internet. |
 
 ### `codenvy config`
 Generates a Codenvy instance configuration using the templates and environment variables stored in `CODENVY_CONFIG` and places the configuration in `CODENVY_INSTANCE`. Uses puppet to generate the configuration files for Codenvy, haproxy, swarm, socat, nginx, and postgres which are mounted when Codenvy services are started. This command is executed on every `start` or `restart`.
