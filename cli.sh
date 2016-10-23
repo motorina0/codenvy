@@ -34,11 +34,11 @@ cli_init() {
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})
     if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || \
-       [[ ! $(ls "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-* > /dev/null 2>&1) ]]; then
-       info "cli" "Development mode is on and we could not find a valid ${CHE_MINI_PRODUCT_NAME} repo or packaged assembly"
+       [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
+       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
        return 2
     fi
-    CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(ls $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-* > /dev/null 2>&1))    
+    CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
   fi
 
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
@@ -775,7 +775,7 @@ cmd_init() {
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     echo "CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-    echo "CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_REPO}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+    echo "CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}" >> "${REFERENCE_ENVIRONMENT_FILE}"
   fi
 
   # Write the Codenvy version to codenvy.ver
