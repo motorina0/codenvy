@@ -1,19 +1,20 @@
 #!/bin/sh
 # how to execute script: curl -sSL http://codenvy.onprem/api/nodes/script | sh
 
+init() {
+  BLUE='\033[1;34m'
+  GREEN='\033[0;32m'
+  RED='\033[0;31m'
+  YELLOW='\033[38;5;220m'
+  NC='\033[0m'
 
-BLUE='\033[1;34m'
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[38;5;220m'
-NC='\033[0m'
-
-REMOTE_IP=###REMOTEIP###
-PROPOSED_IP=###PROPOSEDIP###
-
+  VERBOSE=false
+  MASTER_HOST=###MASTERHOST###
+  NODE_IP=###NODEIP###
+}
 
 error() {
-  printf  "${RED}ERROR:${NC} %s\n" "${1}"
+  printf "${RED}ERROR:${NC} %s\n" "${1}"
 }
 
 has_docker() {
@@ -33,28 +34,80 @@ check_docker() {
     error "Error - Docker not installed properly: ${output}"
     return 1;
   fi
-
 }
+
+get_config() {
+  while test $# -gt 0; do
+    case ${1} in
+      --user)
+        shift
+        USER=${1}
+      ;;
+      --pass | --password)
+        shift
+        PASSWORD=${1}
+      ;;
+      --ip)
+        shift
+        NODE_IP=${1}
+      ;;
+      --verbose)
+        VERBOSE=true
+      *)
+        error "Unknown parameter ${option} found. Use options: --user, --pass, --ip, --verbose"
+        exit 1
+      ;;
+    esac
+  done
+
+  if [ -z "${USER}" ]; then
+    read -p "Codenvy admin username:" </dev/tty USER
+  fi
+  if [ -z "${PASSWORD}" ]; then
+    read -p "Codenvy admin password:" </dev/tty PASSWORD
+  fi
+  if [ -z "${NODE_IP}" ]; then
+    read -p "This host public IP:" </dev/tty NODE_IP
+  fi
+}
+
+login_on_master() {
+  SILENT_FLAG="-s"
+  if [ "${VERBOSE}" == "true" ]; then
+    SILENT_FLAG=""  
+  fi 
+  TOKEN_RESPONSE=$(curl --fail \ 
+                        ${SILENT_FLAG} \
+                        -H "Content-Type: application/json" \ 
+                        -X POST \
+                        -d "{\"username\":\"${USER}\", \
+                             \"password\":\"${PASSWORD}\"}" \ 
+                        http://${REMOTE_IP}/api/auth/login)
+  if [ "$?" != "0" ]; then
+    echo "Unable to get auth token. Check your login and password."
+    return 1
+  fi 
+
+  # extract token
+  TOKEN=$(echo ${TOKEN_RESPONSE} | sed 's/.*"value"\s*:\s*"\([^"]*\)*".*/\1/')  
+}
+
+add_node() {
+  login_on_master
+
+  # register node by using token. 
+  curl -H "Content-Type: application/json" -X POST -d "{\"ip\" : \"${NODE_IP}\"}" http://${MASTER_HOST}/api/nodes?token=$TOKEN
+  echo ""
+}
+
+# See: https://sipb.mit.edu/doc/safe-shell/
+set -e
+set -u
+
+init
 
 check_docker
 
-#login 
-echo "Please enter credentials for Workspace Master:"
-read -p "login:" </dev/tty AUTH_NAME
-read -p "password:" </dev/tty AUTH_PASSWORD
+get_config "$@"
 
-GRAB_TOKEN=$(curl --fail -s -H "Content-Type: application/json" -X POST -d "{\"username\":\"${AUTH_NAME}\", \"password\":\"${AUTH_PASSWORD}\"}" http://${REMOTE_IP}/api/auth/login)
-if [ "$?" != "0" ]; then
-  echo "Unable to get auth token. Check your login and password."
-  return 1
-fi 
-
-# extract token
-TOKEN=$(echo ${GRAB_TOKEN} | sed 's/.*"value"\s*:\s*"\([^"]*\)*".*/\1/')
-
-echo "Please enter this host public IP that will be registered"
-read -p "IP:" </dev/tty PROPOSED_IP
-
-# register node by using token. 
-curl -H "Content-Type: application/json" -X POST -d "{\"ip\" : \"${PROPOSED_IP}\"}" http://${REMOTE_IP}/api/nodes?token=$TOKEN
-echo ""
+add_node

@@ -122,7 +122,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|offline|update|info|network|debug|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|offline|update|add-node|remove-node|list-nodes|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -133,7 +133,6 @@ cli_parse () {
     esac
   fi
 }
-
 
 cli_cli() {
   case ${CHE_CLI_ACTION} in
@@ -200,6 +199,18 @@ cli_cli() {
     network)
       shift
       cmd_network "$@"
+    ;;
+    add-node)
+      shift
+      cmd_add_node
+    ;;
+    remove-node)
+      shift
+      cmd_remove_node
+    ;;
+    list-nodes)
+      shift
+      cmd_list_nodes
     ;;
     help)
       usage
@@ -1223,4 +1234,36 @@ cmd_network() {
 
   log "docker rm -f fakeagent >> \"${LOGS}\""
   docker rm -f fakeagent >> "${LOGS}"
+}
+
+cmd_add_node() {
+  echo "Execute next command on node to add it to the ${CHE_MINI_PRODUCT_NAME} workspace cluster:"
+  echo "curl -sSL http://${CODENVY_HOST}/api/nodes/script | sh --user <${CHE_MINI_PRODUCT_NAME} admin username> --password <${CHE_MINI_PRODUCT_NAME} admin password> --ip <node public IP>"
+}
+
+cmd_remove_node() {
+  if [ $# -eq 0 ]; then
+    error "No ip of node is provided"
+    return 1
+  fi
+  if [ $# -gt 1 ]; then
+    error "Remove node doesn't support multiple arguments"
+    return 1
+  fi
+
+  node_ip=${1}
+  nodes_string=$(grep "^CODENVY_SWARM_NODES=" "${CODENVY_CONFIG}/codenvy.env" | sed "s/.*=//")
+  nodes_array=(${nodes_string//,/ })
+  new_nodes_var="CODENVY_SWARM_NODES="
+  for node in "${nodes_array[@]}"; do
+    if [ ${node} != ${node_ip}* ]; then
+      new_nodes_var+=${node}","
+    fi
+  done
+  sed "s/^CODENVY_SWARM_NODES=.*/${new_nodes_var}/g" 
+}
+
+cmd_list_nodes() {
+  # TODO use call to swarm - it is more accurate
+  cat "${CODENVY_INSTANCE}/config/swarm/node_list"
 }
