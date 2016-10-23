@@ -85,20 +85,22 @@ cli_init() {
 
   USAGE="
 Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
+    help                                 This message
     version                              Installed version and upgrade paths
     init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
-    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} server
-    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} server
-    restart [--force]                    Restart ${CHE_MINI_PRODUCT_NAME} server
+    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
+    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
+    restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
     destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
     upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
-    download [--pull|--force|--offline]  Pulls Docker images to install offline CODENVY_VERSION
+    download [--pull|--force|--offline]  Pulls Docker images for CODENVY_VERSION, or if installed, $CODENVY_VERSION_FILE
     backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
     restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
     offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
     info [ --all                         Run all debugging tests
+           --debug                       Displays system information
            --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
 
 Variables:
@@ -950,7 +952,8 @@ cmd_restart() {
   fi
 
   FORCE_UPDATE=${1:-"--no-force"}
-  if [[ "${FORCE_UPDATE}" == "--force" ]]; then
+  if [[ "${FORCE_UPDATE}" == "--force" ]] ||\
+     [[ "${FORCE_UPDATE}" == "--pull" ]]; then
     info "restart" "Stopping and removing containers..."
     cmd_stop
     info "restart" "Initiating clean start"
