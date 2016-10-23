@@ -43,8 +43,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -53,6 +51,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
  * Defines Node REST API (managing node to register)
  *
  * @author Florent Benoit
+ * @author Alexander Garagatyi
  */
 @Api(value = "/nodes")
 @Path("/nodes")
@@ -62,27 +61,6 @@ public class NodeService {
      * Logger.
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(NodeService.class);
-
-    /**
-     * Update property of pp file
-     * @param propertyName the name of the property to update
-     * @param lineToAnalyze the line to parse
-     * @param valueToAdd the value that should be added
-     * @return the updated line if there was some changes
-     */
-    protected String updateLine(String propertyName, String lineToAnalyze, String valueToAdd) {
-        Pattern pattern = Pattern.compile(".*?" + propertyName + "\\s*=\\s*\"(.*)\"");
-        Matcher matcher = pattern.matcher(lineToAnalyze);
-        if (matcher.matches()) {
-            // return updated value
-            return "$" + propertyName + " = \"" + matcher.group(1) + "," + valueToAdd + "\"";
-        } else {
-            // return current line
-            return lineToAnalyze;
-        }
-    }
-
-
 
     @GET
     @Path("/script")
@@ -98,7 +76,6 @@ public class NodeService {
             throw new ServerException("No script found.");
         }
 
-
         // get Server name
         String requestedServerName = req.getServerName();
 
@@ -111,7 +88,7 @@ public class NodeService {
 
 
         // update content with requested IP
-        content = content.replace("###REMOTEIP###", requestedServerName);
+        content = content.replace("###MASTERHOST###", requestedServerName);
 
         Response.ResponseBuilder response = Response.ok(content);
         response.type("text/plain");
@@ -126,8 +103,10 @@ public class NodeService {
     @ApiResponses({@ApiResponse(code = 200, message = "The node successfully added"),
                    @ApiResponse(code = 400, message = "Missed required parameters, parameters are not valid"),
                    @ApiResponse(code = 500, message = "Internal server error occurred during permissions storing")})
-    public Response registerNode(@Context HttpServletRequest req, @ApiParam(value = "The permissions to store", required = true)
-                             AddNodeDto addNodeDto) throws ServerException, BadRequestException {
+    public String registerNode(@Context HttpServletRequest req,
+                               @ApiParam(value = "The permissions to store", required = true)
+                               AddNodeDto addNodeDto) throws ServerException,
+                                                             BadRequestException {
         String ip;
         int port;
         if (addNodeDto != null) {
@@ -147,7 +126,7 @@ public class NodeService {
         checkSwarmConnection(ip, port);
 
         // add the node on the puppet file
-        java.nio.file.Path path = Paths.get("/puppet-configuration/manifests/codenvy.pp");
+        java.nio.file.Path path = Paths.get("/puppet-configuration/codenvy.env");
         if (!Files.exists(path)) {
             throw new ServerException("No puppet data found.");
         }
@@ -155,7 +134,13 @@ public class NodeService {
         // update the property named  $machine_extra_hosts
         StringBuilder sb = new StringBuilder();
         try (Stream<String> lines = Files.lines(path)) {
-            lines.forEach(s -> sb.append(updateLine("swarm_nodes", s, ip + ":" + port)).append("\n"));
+            lines.map(s -> {
+                if (s.startsWith("CODENVY_SWARM_NODES=")) {
+                    return s + "," + ip + ":" + port;
+                }
+                return s;
+            })
+                 .forEach(s -> sb.append(s).append("\n"));
         } catch (IOException ex) {
             throw new ServerException("Unable to update property", ex);
         }
@@ -167,15 +152,18 @@ public class NodeService {
             throw new ServerException("Unable to add host", e);
         }
 
+        // TODO get from property
         // Launch the puppet agent
-        ProcessBuilder processBuilder =
-                new ProcessBuilder().command("docker", "run", "--rm", "-e", "CODENVY_IP=" + System.getenv("CODENVY_IP"), "-e", "PUPPET_SOURCE=" +  System.getenv("PUPPET_SOURCE"),
-                                                     "-e", "PUPPET_DESTINATION=" + System.getenv("PUPPET_DESTINATION"), "-v",
-                                                        System.getenv("PUPPET_DESTINATION") + ":/opt/codenvy:rw",
-                                                     "-v", System.getenv("PUPPET_SOURCE") + "/manifests:/etc/puppet/manifests:ro",
-                                                       "-v", System.getenv("PUPPET_SOURCE") + "/modules:/etc/puppet/modules:ro",
-                                                      "-t", "puppet/puppet-agent-alpine", "apply", "--modulepath", "/etc/puppet/modules/",
-                                                     "/etc/puppet/manifests/codenvy.pp");
+        ProcessBuilder processBuilder = new ProcessBuilder().command(
+                "docker", "run", "--rm",
+                "-e", "CODENVY_IP=" + System.getenv("CODENVY_IP"),
+                "-e", "PUPPET_SOURCE=" +  System.getenv("PUPPET_SOURCE"),
+                "-e", "PUPPET_DESTINATION=" + System.getenv("PUPPET_DESTINATION"),
+                "-v", System.getenv("PUPPET_DESTINATION") + ":/opt/codenvy:rw",
+                "-v", System.getenv("PUPPET_SOURCE") + "/manifests:/etc/puppet/manifests:ro",
+                "-v", System.getenv("PUPPET_SOURCE") + "/modules:/etc/puppet/modules:ro",
+                "-t", "puppet/puppet-agent-alpine",
+                "apply", "--modulepath", "/etc/puppet/modules/", "/etc/puppet/manifests/codenvy.pp");
 
         Process process;
         try {
@@ -195,10 +183,8 @@ public class NodeService {
             throw new ServerException("Failure in updating puppet configuration");
         }
 
-        return Response.ok("Swarm node '" + ip + ":" + port +"' has been added to configuration. It will take some time for refresh").build();
-
+        return "Swarm node '" + ip + ":" + port +"' has been added to configuration. It will take some time for refresh";
     }
-
 
     protected void checkSwarmConnection(String ip, int port) throws ServerException {
 
@@ -233,13 +219,4 @@ public class NodeService {
             throw new ServerException("The given IP:PORT '" + ip + ":" + port + " is invalid as it provides response code '" + responseCode + "'.");
         }
     }
-
-    private void checkArgument(boolean expression, String message) throws BadRequestException {
-        if (!expression) {
-            throw new BadRequestException(message);
-        }
-    }
-
-
-
 }

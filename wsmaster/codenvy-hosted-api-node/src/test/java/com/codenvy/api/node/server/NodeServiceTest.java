@@ -14,7 +14,6 @@
  */
 package com.codenvy.api.node.server;
 
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class NodeServiceTest {
@@ -22,11 +21,5 @@ public class NodeServiceTest {
 
     @Test
     public void checkRegexp() {
-
-        NodeService nodeService = new NodeService();
-        String lineBefore = "$machine_extra_hosts=\"abcd:1234\"";
-        String lineAfter = nodeService.updateLine("machine_extra_hosts", lineBefore,"efgh:5678");
-
-        Assert.assertEquals(lineAfter, "$machine_extra_hosts = \"abcd:1234,efgh:5678\"");
     }
 }

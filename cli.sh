@@ -85,19 +85,22 @@ cli_init() {
 
   USAGE="
 Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
+    help                                 This message
     version                              Installed version and upgrade paths
     init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
-    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} server
-    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} server
-    restart [--force]                    Restart ${CHE_MINI_PRODUCT_NAME} server
+    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
+    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
+    restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
     destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
     upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
-    download [--pull|--force|--offline]  Pulls Docker images to install offline CODENVY_VERSION
+    download [--pull|--force|--offline]  Pulls Docker images for CODENVY_VERSION, or if installed, $CODENVY_VERSION_FILE
     backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
     restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
     offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
     info [ --all                         Run all debugging tests
+           --debug                       Displays system information
            --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
 
 Variables:
@@ -122,7 +125,7 @@ cli_parse () {
     CHE_CLI_ACTION="help"
   else
     case $1 in
-      version|init|config|start|stop|restart|destroy|config|upgrade|download|backup|restore|offline|update|info|network|debug|help|-h|--help)
+      version|init|config|start|stop|restart|destroy|rmi|config|upgrade|download|backup|restore|offline|update|add-node|remove-node|list-nodes|info|network|debug|help|-h|--help)
         CHE_CLI_ACTION=$1
       ;;
       *)
@@ -133,7 +136,6 @@ cli_parse () {
     esac
   fi
 }
-
 
 cli_cli() {
   case ${CHE_CLI_ACTION} in
@@ -164,6 +166,10 @@ cli_cli() {
     destroy)
       shift 
       cmd_destroy "$@"
+    ;;
+    rmi)
+      shift 
+      cmd_rmi "$@"
     ;;
     upgrade)
       shift
@@ -200,6 +206,18 @@ cli_cli() {
     network)
       shift
       cmd_network "$@"
+    ;;
+    add-node)
+      shift
+      cmd_add_node
+    ;;
+    remove-node)
+      shift
+      cmd_remove_node
+    ;;
+    list-nodes)
+      shift
+      cmd_list_nodes
     ;;
     help)
       usage
@@ -934,7 +952,8 @@ cmd_restart() {
   fi
 
   FORCE_UPDATE=${1:-"--no-force"}
-  if [[ "${FORCE_UPDATE}" == "--force" ]]; then
+  if [[ "${FORCE_UPDATE}" == "--force" ]] ||\
+     [[ "${FORCE_UPDATE}" == "--pull" ]]; then
     info "restart" "Stopping and removing containers..."
     cmd_stop
     info "restart" "Initiating clean start"
@@ -967,6 +986,34 @@ cmd_destroy() {
   info "destroy" "Deleting config"
   log "rm -rf \"${CODENVY_CONFIG}\""
   rm -rf "${CODENVY_CONFIG}"
+}
+
+cmd_rmi() {
+  info "rmi" "Checking registry for version '$CODENVY_VERSION' images"
+  if ! has_version_registry $CODENVY_VERSION; then
+    version_error $CODENVY_VERSION
+    return 1;  
+  fi
+
+  WARNING="rmi !!! Removing images disables codenvy and forces a pull !!!"
+  if ! confirm_operation "${WARNING}" "$@"; then
+    return;
+  fi
+
+  IMAGE_LIST=$(cat "$CODENVY_MANIFEST_DIR"/$CODENVY_VERSION/images)
+  IFS=$'\n'
+  info "rmi" "Removing ${CHE_MINI_PRODUCT_NAME} Docker images..."
+
+  for SINGLE_IMAGE in $IMAGE_LIST; do
+    VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
+    info "rmi" "Removing $VALUE_IMAGE..."
+    log "docker rmi -f ${VALUE_IMAGE} >> \"${LOGS}\" 2>&1 || true"
+    docker rmi -f $VALUE_IMAGE >> "${LOGS}" 2>&1 || true
+  done
+
+  # This is Codenvy's singleton instance with the version registry
+  info "rmi" "Removing codenvy/version"
+  docker rmi -f codenvy/version >> "${LOGS}" 2>&1 || true
 }
 
 cmd_upgrade() {
@@ -1223,4 +1270,36 @@ cmd_network() {
 
   log "docker rm -f fakeagent >> \"${LOGS}\""
   docker rm -f fakeagent >> "${LOGS}"
+}
+
+cmd_add_node() {
+  echo "Execute next command on node to add it to the ${CHE_MINI_PRODUCT_NAME} workspace cluster:"
+  echo "curl -sSL http://${CODENVY_HOST}/api/nodes/script | sh --user <${CHE_MINI_PRODUCT_NAME} admin username> --password <${CHE_MINI_PRODUCT_NAME} admin password> --ip <node public IP>"
+}
+
+cmd_remove_node() {
+  if [ $# -eq 0 ]; then
+    error "No ip of node is provided"
+    return 1
+  fi
+  if [ $# -gt 1 ]; then
+    error "Remove node doesn't support multiple arguments"
+    return 1
+  fi
+
+  node_ip=${1}
+  nodes_string=$(grep "^CODENVY_SWARM_NODES=" "${CODENVY_CONFIG}/codenvy.env" | sed "s/.*=//")
+  nodes_array=(${nodes_string//,/ })
+  new_nodes_var="CODENVY_SWARM_NODES="
+  for node in "${nodes_array[@]}"; do
+    if [ ${node} != ${node_ip}* ]; then
+      new_nodes_var+=${node}","
+    fi
+  done
+  sed "s/^CODENVY_SWARM_NODES=.*/${new_nodes_var}/g" 
+}
+
+cmd_list_nodes() {
+  # TODO use call to swarm - it is more accurate
+  cat "${CODENVY_INSTANCE}/config/swarm/node_list"
 }
