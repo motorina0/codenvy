@@ -209,7 +209,7 @@ cli_cli() {
     ;;
     remove-node)
       shift
-      cmd_remove_node
+      cmd_remove_node "$@"
     ;;
     list-nodes)
       shift
@@ -1269,11 +1269,13 @@ cmd_network() {
   docker rm -f fakeagent >> "${LOGS}"
 }
 
+# Prints command that should be executed on a node to add it to swarm cluster
 cmd_add_node() {
   echo "Execute next command on node to add it to the ${CHE_MINI_PRODUCT_NAME} workspace cluster:"
-  echo "curl -sSL http://${CODENVY_HOST}/api/nodes/script | sh --user <${CHE_MINI_PRODUCT_NAME} admin username> --password <${CHE_MINI_PRODUCT_NAME} admin password> --ip <node public IP>"
+  echo "bash <(curl -sSL http://${CODENVY_HOST}/api/nodes/script) --user <${CHE_MINI_PRODUCT_NAME} admin username> --password <${CHE_MINI_PRODUCT_NAME} admin password> --ip <node public IP>"
 }
 
+# Removes node from swarm cluster configuration and restarts swarm container
 cmd_remove_node() {
   if [ $# -eq 0 ]; then
     error "No ip of node is provided"
@@ -1289,14 +1291,24 @@ cmd_remove_node() {
   nodes_array=(${nodes_string//,/ })
   new_nodes_var="CODENVY_SWARM_NODES="
   for node in "${nodes_array[@]}"; do
-    if [ ${node} != ${node_ip}* ]; then
+    if [ "${node/$node_ip}" = "$node" ] ; then
       new_nodes_var+=${node}","
     fi
   done
-  sed "s/^CODENVY_SWARM_NODES=.*/${new_nodes_var}/g" 
+  # remove trailing coma
+  new_nodes_var=$(echo "${new_nodes_var}" | sed 's/\(.*\),/\1/g')
+  ## TODO added "" for OSX - find portable solution
+  sed -i "" -e "s/^CODENVY_SWARM_NODES=.*/${new_nodes_var}/" "${CODENVY_CONFIG}/codenvy.env"
+  
+  cmd_restart
 }
 
+# Shows list of the docker nodes in the swarm cluster 
 cmd_list_nodes() {
-  # TODO use call to swarm - it is more accurate
+  ## TODO use 
+  ## - config to get all configured nodes
+  ## - instance to get all registered nodes
+  ## - call to swarm api to get all enabled nodes
+  ## Print output that marks all the nodes in accordance to it state
   cat "${CODENVY_INSTANCE}/config/swarm/node_list"
 }

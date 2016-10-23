@@ -53,11 +53,13 @@ get_config() {
       ;;
       --verbose)
         VERBOSE=true
+      ;;
       *)
-        error "Unknown parameter ${option} found. Use options: --user, --pass, --ip, --verbose"
+        error "Unknown parameter ${1} found. Use options: --user, --pass, --ip, --verbose"
         exit 1
       ;;
     esac
+    shift
   done
 
   if [ -z "${USER}" ]; then
@@ -72,30 +74,24 @@ get_config() {
 }
 
 login_on_master() {
-  SILENT_FLAG="-s"
-  if [ "${VERBOSE}" == "true" ]; then
-    SILENT_FLAG=""  
-  fi 
-  TOKEN_RESPONSE=$(curl --fail \ 
-                        ${SILENT_FLAG} \
-                        -H "Content-Type: application/json" \ 
-                        -X POST \
-                        -d "{\"username\":\"${USER}\", \
-                             \"password\":\"${PASSWORD}\"}" \ 
-                        http://${REMOTE_IP}/api/auth/login)
+  VERBOSITY_FLAG="-s"
+  if [ "${VERBOSE}" = true ]; then
+    VERBOSITY_FLAG="-v"
+  fi
+  TOKEN_RESPONSE=$(curl --fail ${VERBOSITY_FLAG} -H "Content-Type: application/json" -X POST -d "{\"username\":\"${USER}\", \"password\":\"${PASSWORD}\"}" http://${MASTER_HOST}/api/auth/login)
   if [ "$?" != "0" ]; then
     echo "Unable to get auth token. Check your login and password."
     return 1
-  fi 
+  fi
 
   # extract token
-  TOKEN=$(echo ${TOKEN_RESPONSE} | sed 's/.*"value"\s*:\s*"\([^"]*\)*".*/\1/')  
+  TOKEN=$(echo ${TOKEN_RESPONSE} | sed 's/.*"value"\s*:\s*"\([^"]*\)*".*/\1/')
 }
 
 add_node() {
   login_on_master
 
-  # register node by using token. 
+  # register node by using token.
   curl -H "Content-Type: application/json" -X POST -d "{\"ip\" : \"${NODE_IP}\"}" http://${MASTER_HOST}/api/nodes?token=$TOKEN
   echo ""
 }
