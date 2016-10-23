@@ -35,7 +35,7 @@ cli_init() {
     CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})
     if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || \
        [[ ! $(ls "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-* > /dev/null 2>&1) ]]; then
-       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
+       info "cli" "Development mode is on and we could not find a valid ${CHE_MINI_PRODUCT_NAME} repo or packaged assembly"
        return 2
     fi
     CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(ls $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-* > /dev/null 2>&1))    
@@ -701,41 +701,19 @@ confirm_operation() {
 cmd_download() {
   FORCE_UPDATE=${1:-"--no-force"}
 
-  # If --offline passed to init, config, start, restart, then load the images from TAR files
-  if [ ${FORCE_UPDATE}  == "--offline" ]; then
-    info "download" "Importing ${CHE_MINI_PRODUCT_NAME} Docker images from tars..."
+  get_version_registry
+  get_image_manifest $CODENVY_VERSION
 
-    if [ ! -d "${CODENVY_OFFLINE_FOLDER}" ]; then
-      info "download" "You requested offline loading of images, but could not find ${CODENVY_OFFLINE_FOLDER}"
-      return 2;
+  IFS=$'\n'
+  for SINGLE_IMAGE in $IMAGE_LIST; do
+    VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
+    if [[ $FORCE_UPDATE == "--force" ]] ||
+       [[ $FORCE_UPDATE == "--pull" ]]; then
+      update_image $FORCE_UPDATE $VALUE_IMAGE
+    else
+      update_image_if_not_found $VALUE_IMAGE
     fi
-
-    IFS=$'\n'
-    for file in "${CODENVY_OFFLINE_FOLDER}"/*.tar 
-    do
-      if ! $(docker load < "${CODENVY_OFFLINE_FOLDER}"/"${file##*/}" > /dev/null); then
-        error "Failed to restore ${CHE_MINI_PRODUCT_NAME} Docker images"
-        return 2;
-      fi
-      info "download" "Loading ${file##*/}..."
-    done
-
-  else
-
-    get_version_registry
-    get_image_manifest $CODENVY_VERSION
-
-    IFS=$'\n'
-    for SINGLE_IMAGE in $IMAGE_LIST; do
-      VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
-      if [[ $FORCE_UPDATE == "--force" ]] ||
-         [[ $FORCE_UPDATE == "--pull" ]]; then
-        update_image $FORCE_UPDATE $VALUE_IMAGE
-      else
-        update_image_if_not_found $VALUE_IMAGE
-      fi
-    done
-  fi
+  done
 }
 
 cmd_init() {
@@ -812,8 +790,7 @@ cmd_config() {
   if ! is_initialized; then
     cmd_init $FORCE_UPDATE
   elif [[ "${FORCE_UPDATE}" == "--pull" ]] || \
-       [[ "${FORCE_UPDATE}" == "--force" ]] || \
-       [[ "${FORCE_UPDATE}" == "--offline" ]]; then 
+       [[ "${FORCE_UPDATE}" == "--force" ]]; then 
     cmd_download $FORCE_UPDATE
   fi
 
@@ -957,8 +934,7 @@ cmd_restart() {
   fi
 
   FORCE_UPDATE=${1:-"--no-force"}
-  if [[ "${FORCE_UPDATE}" == "--force" ]] || \
-     [[ "${FORCE_UPDATE}" == "--offline" ]]; then
+  if [[ "${FORCE_UPDATE}" == "--force" ]]; then
     info "restart" "Stopping and removing containers..."
     cmd_stop
     info "restart" "Initiating clean start"
