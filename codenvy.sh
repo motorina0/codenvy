@@ -267,6 +267,30 @@ init() {
   init_logging
   check_docker
 
+  # If you are using codenvy in offline mode, images must be loaded here
+  # This is the point where we know that docker is working, but before we run any utilities
+  # that require docker.
+  if [ ! -z ${2+x} ]; then
+    if [ "${2}" == "--offline" ]; then
+      info "init" "Importing ${CHE_MINI_PRODUCT_NAME} Docker images from tars..."
+
+      if [ ! -d offline ]; then
+        info "init" "You requested offline loading of images, but could not find 'offline/'"
+        return 2;
+      fi
+
+      IFS=$'\n'
+      for file in "offline"/*.tar 
+      do
+        if ! $(docker load < "offline"/"${file##*/}" > /dev/null); then
+          error "Failed to restore ${CHE_MINI_PRODUCT_NAME} Docker images"
+          return 2;
+        fi
+        info "init" "Loading ${file##*/}..."
+      done
+    fi
+  fi
+
   # Test to see if we have cli_funcs
   if [[ ! -f ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-${CHE_CLI_VERSION}.sh ]] ||
      [[ $(get_script_source_dir)/cli.sh -nt ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-${CHE_CLI_VERSION}.sh ]]; then
@@ -282,7 +306,7 @@ set -e
 set -u
 
 # Initialize the self-updating CLI - this is a common code between Che & Codenvy.
-init
+init "$@"
 
 # Begin product-specific CLI calls
 cli_init "$@"
