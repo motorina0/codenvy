@@ -75,7 +75,9 @@ Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all vari
 #### Workspaces
 Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
 
-We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
+We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. If you are connected to the Internet, we install rsync and SSH automtaically. However, if you are doing an offline installation, then your workspace base images need to have this software included.
+
+Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
 
 In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
 
@@ -248,6 +250,7 @@ CODENVY_DEVELOPMENT_REPO=<path-codenvy-repo>
 You must run Codenvy from the root of the Codenvy repository. By running in the repository, the local `codenvy.sh` and `cli.sh` scripts will override any installed CLI packages. Additionally, two containers will have host mounted files from the local repository. During the `codenvy config` phase, the repository's `/modules` and `/manifests` will be mounted into the puppet configurator.  During the `codenvy start` phase, a local assembly from `assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone` is mounted into the `codenvy/codenvy` runtime container.
 
 ## CLI Reference
+```
 Usage: codenvy [COMMAND] [OPTIONS]
     help                                 This help message
     version                              Installed version and upgrade paths
@@ -266,6 +269,7 @@ Usage: codenvy [COMMAND] [OPTIONS]
     info [ --all                         Run all debugging tests
            --debug                       Displays system information
            --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
+```
 
 ### `codenvy init`
 Initializes an empty directory with a Codenvy configuration and instance folder where user data and runtime configuration will be stored. This command creates two folders, `config` and `instance`. The `config` folder contains the `codenvy.ver` file which you can use to configure how the product is run. Other files in this folder are used by Codenvy's configuration system to structure the runtime microservices. 
