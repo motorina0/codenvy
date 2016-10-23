@@ -3,12 +3,13 @@
 - [Team](#Team)
 - [Issues](#Issues)
 - [Architecture](#architecture)
-- [Installation Types](#Installation_types)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
+  - [Hosting]()
 - [Quick Start](#quick-start)
-- [Logs and User Data](#logs-and-user-data)
+- [Offline Installation]()
 - [Configuration](#configuration)
+- [Logs and User Data](#logs-and-user-data)
 - [Updates](#Updates)
 - [Scaling](#Scaling)
 - [Backup and Recovery](#Backups)
@@ -27,7 +28,6 @@ This packaging and deployment approach is relatively new. We do not yet consider
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
 
 ## Architecture
-
 ![Architecture](https://cloud.githubusercontent.com/assets/5337267/19623944/f2366c74-989d-11e6-970b-db0ff41f618a.png)
 
 ## Issues
@@ -73,6 +73,13 @@ This will let you install Codenvy and run a single workspace. Codenvy's Docker i
 Docker in a VM:
 Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all variations that launch virtual machines that contain a Docker daemon that allows you to run Docker. We recommend increasing your default VM size to at least 4GB. Each virtualization solution has different requirements around mounting VM folders to your host machine - please enable this for your OS so that Codenvy data is persisted on your host disk.
 
+Workspace Requirements:
+Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
+
+We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
+
+In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
+
 ## Installation
 Get the Codenvy CLI. The Codenvy images and supporting utilities are downloaded and maintained by the CLI. The CLI also provides utilities for downloading an offline bundle to run Codenvy while disconnected from the network.
 
@@ -117,22 +124,14 @@ codenvy help
 ```
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
+### Proxies
+We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). This requires two level of settings for proxy operation:
+1. Configuring Docker's daemon for proxy access so that Codenvy can download our images.
+2. Configuring Codenvy's system settings to determine how user workspaces will proxy (or not) to the Internet.
+
 ## Quick Start
-
-### Codenvy as a Remote Server
-
-When running Codenvy on a remote server, export CODENVY_HOST environment variable before running startup script:
-
-`export CODENVY_HOST=$IP`
-
-where `$IP` is an externally accessible IP or a hostname that can be resolved from client machines.
-
-## Starting Codenvy
-
 `codenvy start`
-
-This will install a Codenvy configuration, download Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. A successful start should result with:
-
+This installs a Codenvy configuration, downloads Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. A successful start will display:
 ```
 INFO: (codenvy cli): Downloading cli-latest
 INFO: (codenvy cli): Checking registry for version 'nightly' images
@@ -146,12 +145,36 @@ INFO: (codenvy start): Starting containers...
 INFO: (codenvy start): Server logs at "docker logs -f codenvy_codenvy_1"
 INFO: (codenvy start): Server booting...
 INFO: (codenvy start): Booted and reachable
+INFO: (codenvy start): Ver: 5.0.0-M6-SNAPSHOT
 INFO: (codenvy start): Use: http://10.0.75.2
 INFO: (codenvy start): API: http://10.0.75.2/swagger
 ```
-The default administrative login is:
+The administrative login is:
 user: `admin`
 pass: `password`
+
+### Hosting
+We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
+
+## Offline Installation
+We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
+
+1. Get Docker Images
+While connected to the Internet and with access to DockerHub, download Codenvy's Docker images 
+
+## Configuration
+All configuration is done with environment variables. Environment variables are stored in `/instance/codenvy.env`, a file that is generated during the `codenvy init` phase.
+
+When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, this folder is different from `/instance/config`, which has instance-specific configuration for a Codenvy installation. You should not need to modify the contents of `/config`.
+
+You can run `codenvy init` to install a new configuration into an empty directory. This command uses the `codenvy/init:<version>` Docker container to deliver a version-specific set of puppet templates into the folder.
+
+If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `/instance`. Each time you start Codenvy, we automatically rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
+
+### Available Configuration Parameters
+| Parameter | Description |
+|-----------|-------------|
+| `DEBUG` | Set this to `true` to enable entrypoint debugging. |
 
 ## Logs and User Data
 When Codenvy initializes itself, it creates a `/instance` folder in the directory to store logs, user data, the database, and instance-specific configuration. Codenvy's containers are started with `host:container` volume bindings to mount this information into and out of the containers that require it. You can save the `/instance` folder as a backup for an entire Codenvy instance. 
@@ -184,26 +207,10 @@ Due to differences in file system types between NTFS and what is commonly used i
 If you need to backup your Postgres data, run the following command:
 `TODO - postgres backup commands`
 
-## Configuration
-All configuration of Codenvy is done through environment variables. You can set environment variables in your terminal or by modifying `/instance/codenvy.env` after it is generated from a `codenvy init`. 
-
-When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While named similarly, this folder is different from `/instance/config`, which has instance-specific configuration for a Codenvy installation. You should not need to modify the contents of `/config`.
-
-You can run `codenvy init` to install a new configuration into an empty directory. This command uses the `codenvy/init:<version>` Docker container to deliver a version-specific set of puppet templates into the folder.
-
-If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `/instance`. Each time you start Codenvy, we automatically rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
-
-### Available Configuration Parameters
-| Parameter | Description |
-|-----------|-------------|
-| `DEBUG` | Set this to `true` to enable entrypoint debugging. |
-
 ## Development Mode
-
-By default Codenvy starts in a production mode, i.e Codenvy binaries come with `codenvy/codenvy:$TAG` image. When dev mode is turned on, your custom Codenvy binaries get mounted into the Codenvy container. Dev mode is turned on by exporting the following local environment variable and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
-
-`set DEFAULT_CODENVY_DEVELOPMENT_MODE="on"` - for Windows
-`export DEFAULT_CODENVY_DEVELOPMENT_MODE="on"`- for Mac and Linux
-`codenvy start/restart`
-
-Development mode implies that you have cloned and built https://github.com/codenvy/codenvy repository and run `codenvy` script from the root of this repository.
+If you are developing in the `http://github.com/codenvy/codenvy` repository, you can turn on development mode to allow puppet configuration files and your local Codenvy assembly to be mounted into the appropriate containers. Dev mode is activated by setting environment variables and restarting (if Codenvy is running) or starting Codenvy (if this is the first run):
+```
+CODENVY_DEVELOPMENT_MODE="on"
+CODENVY_DEVELOPMENT_REPO=<path-codenvy-repo>
+```
+You must run Codenvy from the root of the Codenvy repository. By running in the repository, the local `codenvy.sh` and `cli.sh` scripts will override any installed CLI packages. Additionally, two containers will have host mounted files from the local repository. During the `codenvy config` phase, the repository's `/modules` and `/manifests` will be mounted into the puppet configurator.  During the `codenvy start` phase, a local assembly from `assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone` is mounted into the `codenvy/codenvy` runtime container.
