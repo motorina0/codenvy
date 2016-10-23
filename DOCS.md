@@ -28,7 +28,7 @@ See [Contributors](../../graphs/contributors) for the complete list of developer
 
 ## Architecture
 
-![Architecture]https://files.readme.io/bb7c29a-oie_SE4Wl537NcFG.png
+![Architecture](https://files.readme.io/bb7c29a-oie_SE4Wl537NcFG.png)
 
 ## Issues
 Docker is a relatively new project and is actively tested by a thriving community.
