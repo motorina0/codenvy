@@ -246,3 +246,54 @@ CODENVY_DEVELOPMENT_MODE="on"
 CODENVY_DEVELOPMENT_REPO=<path-codenvy-repo>
 ```
 You must run Codenvy from the root of the Codenvy repository. By running in the repository, the local `codenvy.sh` and `cli.sh` scripts will override any installed CLI packages. Additionally, two containers will have host mounted files from the local repository. During the `codenvy config` phase, the repository's `/modules` and `/manifests` will be mounted into the puppet configurator.  During the `codenvy start` phase, a local assembly from `assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone` is mounted into the `codenvy/codenvy` runtime container.
+
+## CLI Reference
+Usage: codenvy [COMMAND] [OPTIONS]
+    help                                 This help message
+    version                              Installed version and upgrade paths
+    init [--pull|--force|--offline]      Initializes a directory with a codenvy configuration 
+    start [--pull|--force|--offline]     Starts codenvy services
+    stop                                 Stops codenvy services
+    restart [--force]                    Restart codenvy services
+    destroy                              Stops services, and deletes codenvy instance data
+    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
+    config                               Generates a codenvy config from vars; run on any start / restart
+    upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
+    download [--pull|--force|--offline]  Pulls Docker images CODENVY_VERSION, or installed, codenvy.ver
+    backup                               Backups codenvy configuration and data to CODENVY_BACKUP_FOLDER
+    restore                              Restores codenvy configuration and data from CODENVY_BACKUP_FOLDER
+    offline                              Saves codenvy Docker images into TAR files for offline install
+    info [ --all                         Run all debugging tests
+           --debug                       Displays system information
+           --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
+
+### Lifecycle
+`codenvy init` initializes an empty directory with a Codenvy configuration and instance folder where user data and runtime configuration will be stored. This command creates two folders, `config` and `instance`. The `config` folder contains the `codenvy.ver` file which you can use to configure how the product is run. Other files in this folder are used by Codenvy's configuration system to structure the runtime microservices. 
+
+These variables can be set in your local environment shell before running and they will be respected during initialization and inserted as defaults into `config/codenvy.ver`:
+
+| Variable | Description |
+|----------|-------------|
+| `CODENVY_VERSION` | The version of Codenvy to install. You can get a list available with `codenvy version`. We always have `nightly` and `latest` available. |
+| `CODENVY_HOST` | The IP address or DNS name of the Codenvy service. We use `codenvy/che-ip` to attempt discovery if not set. |
+| `CODENVY_CONFIG` | The folder where a Codenvy config will be placed. The default is `$pwd/config/`. |
+| `CODENVY_INSTANCE` | The folder where your Codenvy instance and user data will be placed. The default is `$pwd/instance`. |
+| `CODENVY_DEVELOPMENT_MODE` | If `on`, then will mount `CODENVY_DEVELOPMENT_REPO`, overriding the files in Codenvy config and containers. |
+| `CODENVY_DEVELOPMENT_REPO` | The location of the `http://github.com/codenvy/codenvy` local clone. |
+
+Codenvy depends upon Docker images. We use Docker images in three ways:
+1. As cross-platform utilites within the CLI. For example, in scenarios where we need to perform a `curl` operation, we use a small Docker image to perform this function. We do this as a precaution as many operating systems (like Windows) do not have curl installed.
+2. To look up the master version and upgrade manifest, which is stored as a singleton Docker image called `codenvy/version`. 
+3. To perform initialization and configuration of Codenvy such as with `codenvy/init`. This image contains templates that are delivered as a payload and installed onto your computer. These payload images can have different files based upon the image's version.
+4. To run Codenvy and its dependent services, which include Codenvy, HAproxy, nginx, Postgres, socat, and Docker Swarm.
+
+You can control the nature of how Codenvy downloads these images with command line options. All image downloads are performed with `docker pull`. 
+
+| Mode | Description |
+|------|-------------|
+| --no-force | Default behavior. Will download an image if not found locally. A local check of the image will see if an image of a matching name is in your local registry and then skip the pull if it is found. This mode does not check DockerHub for a newer version of the same image. |
+| --pull | Will always perform a `docker pull` when an image is requested. If there is a newer version of the same tagged image at DockerHub, it will pull it, or use the one in local cache. This keeps your images up to date, but execution is slower. |
+| --force | Performs a forced removal of the local image using `docker rmi` and then pulls it again (anew) from DockerHub. You can use this as a way to clean your local cache and ensure that all images are new. |
+| --ofline | Loads Docker images from `offline/*.tar` folder during a pre-boot mode of the CLI. Used if you are performing an installation or start while disconnected from the Internet. |
+
+`codenvy config` 
