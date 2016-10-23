@@ -44,6 +44,10 @@ This packaging and deployment approach is relatively new. We do not yet consider
 
 5. NTFS backups. Due to incompatibilities between NTFS and other file systems, Windows will have their Postgres data stored in a named volume within the boot2docker or Docker for Windows. User data is persisted, but if the VM that you are using is wiped and restarted, Codenvy's Postgres data will be lost. We will add an ability to extract this information with `codenvy backup` and `codenvy restore`.
 
+6. System-level configuration of private Docker registries is not yet enabled in this packaging. It's possible to configure this manually by modifying `CODENVY_CONFIG`/manifests/codenvy.pp. However, if you run `codenvy destroy` or `codenvy init`, your configuration changes for registries will not be preserved.
+
+7. Add a `codenvy reload` command, which resarts services with a SIGHUP signal instead of a container restart. SIGHUP signals instruct container services to reload their configuration without going through a reboot cycle.
+
 ## Team
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
 
@@ -234,7 +238,7 @@ rm -rf ~/.codenvy
 ```
 
 ## Configuration
-All configuration is done with environment variables. Environment variables are stored in `CODENVY_CONFIG/codenvy.env`, a file that is generated during the `codenvy init` phase.
+All configuration is done with environment variables. Environment variables are stored in `CODENVY_CONFIG/codenvy.env`, a file that is generated during the `codenvy init` phase. If you rerun `codenvy init` in the same `CODENVY_CONFIG`, your codenvy.env will be overwritten. You can have multiple `CODENVY_CONFIG` folders to keep profiles.
 
 When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, this folder is different from `CODENVY_INSTANCE/config`, which has instance-specific configuration for a Codenvy installation. 
 
@@ -271,6 +275,9 @@ Google oAuth (and others) are configured the same:
 CODENVY_GOOGLE_CLIENT_ID=yourID
 CODENVY_GOOGLE_SECRET=yourSecret
 ```
+
+### Workspace Limits
+You can place limits on how users interact with the system to control overall system resource usage. You can define how many workspaces created, RAM consumed, idle timeout, and a variety of other parameters. See "Workspace Configuration" in the `CODENVY_CONFIG/codenvy.env` file.
 
 ## Logs and User Data
 When Codenvy initializes itself, it creates a `/instance` folder in the directory to store logs, user data, the database, and instance-specific configuration. Codenvy's containers are started with `host:container` volume bindings to mount this information into and out of the containers that require it. You can save the `/instance` folder as a backup for an entire Codenvy instance. 
