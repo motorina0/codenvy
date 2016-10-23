@@ -177,8 +177,10 @@ INFO: (codenvy start): Use: http://10.0.75.2
 INFO: (codenvy start): API: http://10.0.75.2/swagger
 ```
 The administrative login is:
-user: `admin`
-pass: `password`
+```
+user: admin
+pass: password
+```
 
 ### Hosting
 We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
@@ -279,7 +281,7 @@ Usage: codenvy [COMMAND] [OPTIONS]
     init [--pull|--force|--offline]      Initializes a directory with a codenvy configuration 
     start [--pull|--force|--offline]     Starts codenvy services
     stop                                 Stops codenvy services
-    restart [--force]                    Restart codenvy services
+    restart [--pull|--force]             Restart codenvy services
     destroy                              Stops services, and deletes codenvy instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a codenvy config from vars; run on any start / restart
@@ -323,12 +325,28 @@ You can control the nature of how Codenvy downloads these images with command li
 | `--ofline` | Loads Docker images from `offline/*.tar` folder during a pre-boot mode of the CLI. Used if you are performing an installation or start while disconnected from the Internet. |
 
 ### `codenvy config`
-Generates a Codenvy instance configuration using the templates and environment variables stored in `CODENVY_CONFIG`. Uses puppet to generate the configuration files for Codenvy, haproxy, swarm, socat, nginx, and postgres which are mounted when Codenvy services are started. This command is executed on every `start` or `restart`.
+Generates a Codenvy instance configuration using the templates and environment variables stored in `CODENVY_CONFIG` and places the configuration in `CODENVY_INSTANCE`. Uses puppet to generate the configuration files for Codenvy, haproxy, swarm, socat, nginx, and postgres which are mounted when Codenvy services are started. This command is executed on every `start` or `restart`.
 
 If you have set `CODENVY_VERSION` environment variable and it does not match the version that is in `CODENVY_INSTANCE/codenvy.ver`, then the configuration will abort to prevent you from running a configuration for a different version than what is currently installed.
 
 This command respects `--no-force`, `--pull`, `--force`, and `--offline`.
 
 ### `codenvy start`
-Starts Codenvy and its services using `docker-compose`.
+Starts Codenvy and its services using `docker-compose`. If the system cannot find a valid `CODENVY_CONFIG` and `CODENVY_INSTANCE` it will perform a `codenvy init`. Every `start` and `restart` will run a `codenvy config` to generate a new configuration set using the latest configuration. The starting sequence will perform pre-flight testing to see if any ports required by Codenvy are currently used by other services and post-flight checks to verify access to key APIs.  
 
+### `codenvy stop`
+Stops all of the Codenvy service containers and removes them.
+
+### `codenvy restart`
+If `--no-force` (the default), uses Docker compose to perform a container restart.  If `--force` or '`--pull`, then performs a `codenvy stop` followed by a `codenvy start`, respecting `--pull` and `--force`.  `--offline` is not valid in a restart as the images are already loaded and the system has been started, and offline pulling is a pre-boot sequence.
+
+### `codenvy destroy`
+Deletes `CODENVY_CONFIG` and `CODENVY_INSTANCE`, including destroying all user workspaces, projects, data, and user database. If you provide `--force` then the confirmation warning will be skipped.
+
+### `codenvy version`
+Provides information on the current version, the available versions that are hosted in Codenvy's repositories, and if you have a `CODENVY_INSTANCE`, then also the available upgrade paths. `codenvy upgrade` enforces upgrade sequences and will prevent you from upgrading one version to another version where data migrations cannot be guaranteed.
+
+### `codenvy upgrade`
+Manages the sequence of upgrading Codenvy from one version to another. Run `codenvy version` to get a list of available versions that you can upgrade to.
+
+Do *not* upgrade by wiping your Codenvy images and setting a new `CODENVY_VERSION`. There is a possibility that you will corrupt your system. We have multiple checks that will stop you from starting Codenvy if the configured `CODENVY_VERSION` differs from the one that is in `CODENVY_INSTANCE/codenvy.ver`.  In some releases, we change the underlying database schema model, and we need to run internal migration scripts that transforms the old data model into the new format. The `codenvy upgrade` function ensures that you are upgrading to a supported version where a clean data migration for your existing database can be completed.
