@@ -130,6 +130,20 @@ We support installation and operation behind a proxy. You will be operating a cl
 
 Before starting Codenvy or adding nodes for scaling, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). You must set each physical host node that will run Codenvy with proxy access.
 
+Docker proxy configuration works for Docker daemon itself and running containers. However, Java requires proxy environment variables in `JAVA_OPTS`. This concerns both Codenvy server and workspace agents that run in workspace containers. Proxy settings are configured in `/instance/codenvy.env` file:
+
+```
+CODENVY_HTTP_PROXY_FOR_CODENVY=
+CODENVY_HTTPS_PROXY_FOR_CODENVY=
+CODENVY_NO_PROXY_FOR_CODENVY=
+
+HTTP_PROXY_FOR_CODENVY_WORKSPACES=
+HTTPS_PROXY_FOR_CODENVY_WORKSPACES=
+NO_PROXY_FOR_CODENVY_WORKSPACES=
+```
+
+`NO_PROXY` is required is you use a fake DNS name, so that Java and any system utilities do not attempt to go through proxy when resolving such a DNS name. By default, Codenvy is configured to use IP address as `$CODENVY_HOST`, however, you may reconfigure it in `/instance/codenvy.env`. 
+
 ## Quick Start
 `codenvy start`
 This installs a Codenvy configuration, downloads Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. You do not need root access to start Codenvy, unless your environment requires it for Docker operations. You will need write access to the current directory and to `~/.codenvy` where certain CLI and manifest information is stored.
