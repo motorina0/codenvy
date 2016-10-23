@@ -21,6 +21,7 @@ Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, mu
 - [Configuration](#configuration)
   - [SMTP](#smtp-configuration)
   - [oAuth](#oauth)
+  - [Workspaces]()
 - [Logs and User Data](#logs-and-user-data)
 - [Upgrading](#Updates)
 - [Scaling](#Scaling)
