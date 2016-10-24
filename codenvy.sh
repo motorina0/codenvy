@@ -207,7 +207,7 @@ check_docker_compose() {
 
   # Docker compose needs to be greater than or equal to 1.8.1
   if [[ ${FIRST} -lt 1 ]] ||
-     [[ ${SECOND} -lt 9 ]]; then
+     [[ ${SECOND} -lt 8 ]]; then
       output=$(docker-compose -version)
       error "Error - Docker Compose 1.8+ required:"
       error "Docker compose output: ${output}"
