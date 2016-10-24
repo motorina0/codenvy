@@ -204,7 +204,7 @@ node default {
 # Limits
   $limits_user_workspaces_count = getValue("CODENVY_LIMITS_USER_WORKSPACES_COUNT","30")
   $limits_user_workspaces_ram = getValue("CODENVY_LIMITS_USER_WORKSPACES_RAM","100gb")
-  $limits_organization_workspaces_ram = getValue("CODENVY_LIMITS_USER_WORKSPACES_RAM","100gb")
+  $limits_organization_workspaces_ram = getValue("CODENVY_LIMITS_ORGANIZATION_WORKSPACES_RAM","100gb")
   $limits_workspace_env_ram = getValue("CODENVY_LIMITS_WORKSPACE_ENV_RAM","16gb")
 
 ###############################
