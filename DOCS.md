@@ -346,8 +346,8 @@ Usage: codenvy [COMMAND] [OPTIONS]
     destroy                              Stops services, and deletes codenvy instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a codenvy config from vars; run on any start / restart
-    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster 
-    remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
+    add-node                             Adds a physical node to serve workspaces intto the codenvy cluster 
+    remove-node <ip>                     Removes the physical node from the codenvy cluster
     upgrade                              Upgrades Codenvy to a new version with data migrations and bakcups
     download [--pull|--force|--offline]  Pulls Docker images CODENVY_VERSION, or installed, codenvy.ver
     backup                               Backups codenvy configuration and data to CODENVY_BACKUP_FOLDER
