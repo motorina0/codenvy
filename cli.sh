@@ -33,12 +33,18 @@ cli_init() {
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})
-    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || \
-       [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
-       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
-       return 2
+    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]]; then 
+      info "cli" "Development mode is on and could not find valid repo or packaged assembly"
+      info "cli" "Set CODENVY_DEVELOPMENT_REPO to the root of your git clone repo"
+      return 2
     fi
-    CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
+    if [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/ >> "${LOGS}" 2>&1) ]]; then
+      info "cli" "Development mode is on and could not find valid Tomcat assembly"
+      info "cli" "Have you built /assembly/onpremises-ide-packaging-tomcat-codenvy-allinone yet?"
+      return 2
+    else 
+      CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
+    fi
   fi
 
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
@@ -94,6 +100,8 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
+    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster 
+    remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
     upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
     download [--pull|--force|--offline]  Pulls Docker images for CODENVY_VERSION, or if installed, $CODENVY_VERSION_FILE
     backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
@@ -775,21 +783,19 @@ cmd_init() {
 
   # After initialization, add codenvy.env with self-discovery.
   log "touch \"${REFERENCE_ENVIRONMENT_FILE}\""
-  touch "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_HOST=${CODENVY_HOST}" > "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_SWARM_NODES=${CODENVY_HOST}:23750" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
-    echo "CODENVY_ENVIRONMENT=development" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  else
-    echo "CODENVY_ENVIRONMENT=production" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  fi
-  echo "CODENVY_INSTANCE=${CODENVY_INSTANCE}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_CONFIG=${CODENVY_CONFIG}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-  echo "CODENVY_VERSION=${CODENVY_VERSION}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+
+  sed -i "/CODENVY_HOST=/c\CODENVY_HOST=${CODENVY_HOST}" "${REFERENCE_ENVIRONMENT_FILE}"
+  sed -i "/CODENVY_VERSION=/c\CODENVY_VERSION=${CODENVY_VERSION}" "${REFERENCE_ENVIRONMENT_FILE}"
+  sed -i "/CODENVY_CONFIG=/c\CODENVY_CONFIG=${CODENVY_CONFIG}" "${REFERENCE_ENVIRONMENT_FILE}"
+  sed -i "/CODENVY_INSTANCE=/c\CODENVY_INSTANCE=${CODENVY_INSTANCE}" "${REFERENCE_ENVIRONMENT_FILE}"
+  sed -i "/CODENVY_SWARM_MODE=/c\CODENVY_SWARM_MODE=${CODENVY_HOST}:23750" "${REFERENCE_ENVIRONMENT_FILE}"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
-    echo "CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}" >> "${REFERENCE_ENVIRONMENT_FILE}"
-    echo "CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}" >> "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i "/CODENVY_ENVIRONMENT=/c\CODENVY_ENVIRONMENT=development" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i "/CODENVY_DEVELOPMENT_REPO=/c\CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i "/CODENVY_DEVELOPMENT_TOMCAT=/c\CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}" "${REFERENCE_ENVIRONMENT_FILE}"
+  else
+    sed -i "/CODENVY_ENVIRONMENT=/c\CODENVY_ENVIRONMENT=production" "${REFERENCE_ENVIRONMENT_FILE}"
   fi
 
   # Write the Codenvy version to codenvy.ver
@@ -900,7 +906,7 @@ cmd_start() {
   text   "         port 80 (http):       $(port_open 80 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   text   "         port 443 (https):     $(port_open 443 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   text   "         port 5000 (registry): $(port_open 5000 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
-  if ! $(port_open 80) || ! $(port_open 443) || ~ $(port_open 5000); then
+  if ! $(port_open 80) || ! $(port_open 443) || ! $(port_open 5000); then
     error "Ports required to run codenvy are used by another program. Aborting..."
     return 1;
   fi
@@ -1271,11 +1277,13 @@ cmd_network() {
 
 # Prints command that should be executed on a node to add it to swarm cluster
 cmd_add_node() {
-  info "add-node" "1. SSH into the remote node to add."
-  info "add-node" "2. Execute this script:"
-  info "add-node" "   bash <(curl -sSL http://${CODENVY_HOST}/api/nodes/script) --user <${CHE_MINI_PRODUCT_NAME}-admin-user> --password <${CHE_MINI_PRODUCT_NAME}-admin-pass> --ip <node-ip>"
+  info "add-node" "1. For the node you want to add, verify that Docker is installed."
+  info "add-node" "2. Collect the externally accessible IP address or DNS of the node."
+  info "add-node" "3. Grab your Codenvy admin user name and password."
+  info "add-node" "4. SSH into the remote node and execute:"
+  printf "                             ${YELLOW}bash <(curl -sSL http://${CODENVY_HOST}/api/nodes/script) --user <admin-user> --password <admin-pass> --ip <node-ip>${NC}"
   echo ""
-  info "add-node" "   Set '--ip' to the external IP or DNS of the node."
+  info "add-node" "5. The node will configure itself and update the Codenvy cluster."
 }
 
 # Removes node from swarm cluster configuration and restarts swarm container

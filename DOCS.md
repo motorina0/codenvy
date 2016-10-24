@@ -1,5 +1,5 @@
 # Codenvy Installation and Operation
-Codenvy makes cloud workspaces for develoment teams. Codenvy is a multi-user, multi-tenant, and distributed implementation of Eclipse Che with team management and a DevOps workspace platform. This page documents how to install and operate a clustered Codenvy using Docker.
+Codenvy makes cloud workspaces for develoment teams. This page is how to install and use Codenvy running as a set of Docker containers.
 
 - [Beta](#beta)
 - [Team](#Team)
@@ -40,13 +40,11 @@ This packaging and deployment approach is relatively new. We do not yet consider
 
 3. HTTP/S. We are working to make configuration of SSL and HTTP/S a single line so that you can swap between configurations. The current version only supports HTTP.
 
-4. `codenvy.env` documentation. Currently, we expect all configuration of Codenvy to be done by users in `CODENVY_CONFIG/codenvy.env`. All parameters are currently supported, but they are not provided with default documentation in the environment file. Temporarily, you can inspect how `codenvy.pp` is configured at `docs.codenvy.com` or by studying `CODENVY_CONFIG/manifests/codenvy.pp`.
+4. NTFS backups. Due to incompatibilities between NTFS and other file systems, Windows will have their Postgres data stored in a named volume within the boot2docker or Docker for Windows. User data is persisted, but if the VM that you are using is wiped and restarted, Codenvy's Postgres data will be lost. We will add an ability to extract this information with `codenvy backup` and `codenvy restore`.
 
-5. NTFS backups. Due to incompatibilities between NTFS and other file systems, Windows will have their Postgres data stored in a named volume within the boot2docker or Docker for Windows. User data is persisted, but if the VM that you are using is wiped and restarted, Codenvy's Postgres data will be lost. We will add an ability to extract this information with `codenvy backup` and `codenvy restore`.
+5. System-level configuration of private Docker registries is not yet enabled in this packaging. It's possible to configure this manually by modifying `CODENVY_CONFIG`/manifests/codenvy.pp. However, if you run `codenvy destroy` or `codenvy init`, your configuration changes for registries will not be preserved.
 
-6. System-level configuration of private Docker registries is not yet enabled in this packaging. It's possible to configure this manually by modifying `CODENVY_CONFIG`/manifests/codenvy.pp. However, if you run `codenvy destroy` or `codenvy init`, your configuration changes for registries will not be preserved.
-
-7. Add a `codenvy reload` command, which resarts services with a SIGHUP signal instead of a container restart. SIGHUP signals instruct container services to reload their configuration without going through a reboot cycle.
+6. Add a `codenvy reload` command, which resarts services with a SIGHUP signal instead of a container restart. SIGHUP signals instruct container services to reload their configuration without going through a reboot cycle.
 
 ## Team
 See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
@@ -238,13 +236,15 @@ rm -rf ~/.codenvy
 ```
 
 ## Configuration
-All configuration is done with environment variables. Environment variables are stored in `CODENVY_CONFIG/codenvy.env`, a file that is generated during the `codenvy init` phase. If you rerun `codenvy init` in the same `CODENVY_CONFIG`, your codenvy.env will be overwritten. You can have multiple `CODENVY_CONFIG` folders to keep profiles.
+All configuration is done with environment variables. Environment variables are stored in `CODENVY_CONFIG/codenvy.env`, a file that is generated during the `codenvy init` phase. If you rerun `codenvy init` in the same `CODENVY_CONFIG`, your codenvy.env will be overwritten. You can have multiple `CODENVY_CONFIG` folders in order to keep profiles of configuration.
 
-When Codenvy initializes itself, it creates a `/config` folder and populates it with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, this folder is different from `CODENVY_INSTANCE/config`, which has instance-specific configuration for a Codenvy installation. 
+When Codenvy initializes itself, it creates a `/config` folder in the current directory or uses the value of `CODENVY_CONFIG`. It then populates `CODENVY_CONFIG` with puppet configuration templatees specific to the version of Codenvy that you are planning to run. While similar, `CODENVY_CONFIG` is different from `CODENVY_INSTANCE/config`, which has instance-specific configuration for a Codenvy installation. 
 
 You can run `codenvy init` to install a new configuration into an empty directory. This command uses the `codenvy/init:<version>` Docker container to deliver a version-specific set of puppet templates into the folder.
 
-If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `/instance`. Each time you start Codenvy, we automatically rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
+If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `CODENVY_INSTANCE` or if you have not set that then a subdirectory named `/instance`. Each time you start Codenvy, we rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
+
+When doing an initialization, if you have `CODENVY_VERSION`, `CODENVY_HOST`, `CODENVY_CONFIG`, or `CODENVY_INSTANCE` set, then those values will be inserted into your `CODENVY_CONFIG/codenvy.env` template. After initialization, you can edit any environmen variable and rerun `codenvy config` to update the system.
 
 ### SMTP
 By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
