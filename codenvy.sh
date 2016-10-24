@@ -172,6 +172,10 @@ has_docker() {
   hash docker 2>/dev/null && return 0 || return 1
 }
 
+has_docker_compose() {
+  hash docker-compose 2>/dev/null && return 0 || return 1 
+}
+
 has_curl() {
   hash curl 2>/dev/null && return 0 || return 1
 }
@@ -187,7 +191,57 @@ check_docker() {
     error "Error - Docker not installed properly: \n${output}"
     return 1;
   fi
+}
 
+check_docker_compose() {
+  if ! has_docker_compose; then
+    error "Error - Docker Compose not found. Get it at https://docs.docker.com/compose/install/."
+    return 2;
+  fi
+
+  COMPOSE_VERSION=$(docker-compose -version | cut -d' ' -f3)
+  COMPOSE_VERSION=${COMPOSE_VERSION::-1} 
+
+  FIRST=$(echo ${COMPOSE_VERSION:0:1})
+  SECOND=$(echo ${COMPOSE_VERSION:2:1})
+
+  # Docker compose needs to be greater than or equal to 1.8.1
+  if [[ ${FIRST} -lt 1 ]] ||
+     [[ ${SECOND} -lt 9 ]]; then
+      output=$(docker-compose -version)
+      error "Error - Docker Compose 1.8+ required:"
+      error "Docker compose output: ${output}"
+      return 2;
+  fi
+}
+
+grab_offline_images(){
+  # If you are using codenvy in offline mode, images must be loaded here
+  # This is the point where we know that docker is working, but before we run any utilities
+  # that require docker.
+  if [ ! -z ${2+x} ]; then
+    if [ "${2}" == "--offline" ]; then
+      info "init" "Importing ${CHE_MINI_PRODUCT_NAME} Docker images from tars..."
+
+      if [ ! -d offline ]; then
+        info "init" "You requested offline loading of images, but could not find 'offline/'"
+        return 2;
+      fi
+
+      IFS=$'\n'
+      for file in "offline"/*.tar 
+      do
+        if ! $(docker load < "offline"/"${file##*/}" > /dev/null); then
+          error "Failed to restore ${CHE_MINI_PRODUCT_NAME} Docker images"
+          return 2;
+        fi
+        info "init" "Loading ${file##*/}..."
+      done
+    fi
+  fi
+}
+
+grab_initial_images() {
   # Prep script by getting default image
   if [ "$(docker images -q alpine 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image alpine:latest"
@@ -267,30 +321,9 @@ get_script_source_dir() {
 init() {
   init_logging
   check_docker
-
-  # If you are using codenvy in offline mode, images must be loaded here
-  # This is the point where we know that docker is working, but before we run any utilities
-  # that require docker.
-  if [ ! -z ${2+x} ]; then
-    if [ "${2}" == "--offline" ]; then
-      info "init" "Importing ${CHE_MINI_PRODUCT_NAME} Docker images from tars..."
-
-      if [ ! -d offline ]; then
-        info "init" "You requested offline loading of images, but could not find 'offline/'"
-        return 2;
-      fi
-
-      IFS=$'\n'
-      for file in "offline"/*.tar 
-      do
-        if ! $(docker load < "offline"/"${file##*/}" > /dev/null); then
-          error "Failed to restore ${CHE_MINI_PRODUCT_NAME} Docker images"
-          return 2;
-        fi
-        info "init" "Loading ${file##*/}..."
-      done
-    fi
-  fi
+  check_docker_compose
+  grab_offline_images
+  grab_initial_images
 
   # Test to see if we have cli_funcs
   if [[ ! -f ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-${CHE_CLI_VERSION}.sh ]] ||
