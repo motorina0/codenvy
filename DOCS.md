@@ -55,17 +55,19 @@ Docker is a relatively new project and is actively tested by a thriving communit
 
 Given the nature of the development and release cycle it is important that you have the latest version of docker installed because any issue that you encounter might have already been fixed with a newer docker release.
 
-Install the most recent version of the Docker Engine for your platform using the [official Docker releases](http://docs.docker.com/engine/installation/), including support for Mac and Windows!  If you are on Linux, you can also innstall using:
-
+Install the most recent version of the Docker Engine for your platform using the [official Docker releases](http://docs.docker.com/engine/installation/), including support for Mac and Windows!  If you are on Linux, you can also install using:
 ```bash
 wget -qO- https://get.docker.com/ | sh
 ```
 
-Sometimes Fedora and RHEL/CentOS users will encounter unexpected issues. Try disabling selinux with `setenforce 0` and check if resolves the issue. 
+Sometimes Fedora and RHEL/CentOS users will encounter unexpected issues. Try disabling selinux with `setenforce 0` and check if resolves the issue. If using the latest docker version and/or disabling selinux does not fix the issue then please file a issue request on the [issues](https://github.com/codenvy/codenvy/issues) page. If you are a licensed customer of Codenvy, you can get prioritized support with support@codenvy.com.
 
-You may also set `CHE_CLI_DEBUG=true` to enable debugging of the CLI, which could help you pin point any configuration issues.
 
-If using the latest docker version and/or disabling selinux does not fix the issue then please file a issue request on the [issues](https://github.com/codenvy/codenvy/issues) page. If you are a licensed customer of Codenvy, you can get prioritized support with support@codenvy.com.
+Install the most recent version of Docker Compose for your platform using the [official Docker releases](https://github.com/docker/compose/releases). With Windows and Mac, this comes with Docker Toolbox. If you are on Linux, you can also install using:
+```bash
+curl -L "https://github.com/docker/compose/releases/download/1.8.1/docker-compose-$(uname -s)-$(uname -m)" > /usr/local/bin/docker-compose
+```
+If you run the CLI and you get issues (or no output), we do advanced logging and include all error messages in ~/.codenvy/cli/cli.log. It will have more information to tell you what happened.
 
 In your issue report please make sure you provide the following information:
 - The host distribution and release version
