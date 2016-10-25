@@ -182,13 +182,12 @@ has_curl() {
 
 check_docker() {
   if ! has_docker; then
-    error "Error - Docker not found. Get it at https://docs.docker.com/engine/installation/."
+    error "Docker not found. Get it at https://docs.docker.com/engine/installation/."
     return 1;
   fi
 
   if ! docker ps >> "${LOGS}" 2>&1; then
-    output=$(docker ps)
-    error "Error - Docker not installed properly: \n${output}"
+    error "Docker issues - 'docker ps' fails."
     return 1;
   fi
 }

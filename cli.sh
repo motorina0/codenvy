@@ -754,7 +754,7 @@ cmd_init() {
     get_image_manifest $CODENVY_VERSION
   fi
 
-  info "init" "Installing configuration"
+  info "init" "Installing configuration and bootstrap variables:"
   log "mkdir -p \"${CODENVY_CONFIG}\""
   mkdir -p "${CODENVY_CONFIG}"
   log "mkdir -p \"${CODENVY_INSTANCE}\""
@@ -784,18 +784,28 @@ cmd_init() {
   # After initialization, add codenvy.env with self-discovery.
   log "touch \"${REFERENCE_ENVIRONMENT_FILE}\""
   sed -i'.bak' "s|#CODENVY_HOST=.*|CODENVY_HOST=${CODENVY_HOST}|" "${REFERENCE_ENVIRONMENT_FILE}"
+  info "init" "  CODENVY_HOST=${CODENVY_HOST}"
   sed -i'.bak' "s|#CODENVY_VERSION=.*|CODENVY_VERSION=${CODENVY_VERSION}|" "${REFERENCE_ENVIRONMENT_FILE}"
+  info "init" "  CODENVY_VERSION=${CODENVY_VERSION}"
   sed -i'.bak' "s|#CODENVY_CONFIG=.*|CODENVY_CONFIG=${CODENVY_CONFIG}|" "${REFERENCE_ENVIRONMENT_FILE}"
+  info "init" "  CODENVY_CONFIG=${CODENVY_CONFIG}"
   sed -i'.bak' "s|#CODENVY_INSTANCE=.*|CODENVY_INSTANCE=${CODENVY_INSTANCE}|" "${REFERENCE_ENVIRONMENT_FILE}"
+  info "init" "  CODENVY_INSTANCE=${CODENVY_INSTANCE}"
   sed -i'.bak' "s|#CODENVY_SWARM_NODES=.*|CODENVY_SWARM_NODES=${CODENVY_HOST}:23750|" "${REFERENCE_ENVIRONMENT_FILE}"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=development|" "${REFERENCE_ENVIRONMENT_FILE}"
+    info "init" "  CODENVY_ENVIRONMENT=development"
     sed -i'.bak' "s|CODENVY_DEVELOPMENT_REPO=.*|CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    info "init" "  CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}"
     sed -i'.bak' "s|CODENVY_DEVELOPMENT_TOMCAT=.*|CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    info "init" "  CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}"
   else
     sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=production|" "${REFERENCE_ENVIRONMENT_FILE}"
+    info "init" "  CODENVY_ENVIRONMENT=production"
   fi
+
+  rm -rf "${REFERENCE_ENVIRONMENT_FILE}".bak > /dev/null 2>&1
 
   # Write the Codenvy version to codenvy.ver
   echo "$CODENVY_VERSION" > "${CODENVY_CONFIG}/${CODENVY_VERSION_FILE}"
