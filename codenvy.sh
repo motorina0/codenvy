@@ -199,8 +199,8 @@ check_docker_compose() {
     return 2;
   fi
 
-  COMPOSE_VERSION=$(docker-compose -version | cut -d' ' -f3)
-  COMPOSE_VERSION=${COMPOSE_VERSION::-1} 
+  COMPOSE_VERSION=$(docker-compose -version | cut -d' ' -f3 | sed 's/,//')
+  COMPOSE_VERSION=${COMPOSE_VERSION:-1}
 
   FIRST=$(echo ${COMPOSE_VERSION:0:1})
   SECOND=$(echo ${COMPOSE_VERSION:2:1})
