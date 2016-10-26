@@ -38,7 +38,7 @@ cli_init() {
       info "cli" "Set CODENVY_DEVELOPMENT_REPO to the root of your git clone repo"
       return 2
     fi
-    if [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/ >> "${LOGS}" 2>&1) ]]; then
+    if [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
       info "cli" "Development mode is on and could not find valid Tomcat assembly"
       info "cli" "Have you built /assembly/onpremises-ide-packaging-tomcat-codenvy-allinone yet?"
       return 2
@@ -794,14 +794,14 @@ cmd_init() {
   sed -i'.bak' "s|#CODENVY_SWARM_NODES=.*|CODENVY_SWARM_NODES=${CODENVY_HOST}:23750|" "${REFERENCE_ENVIRONMENT_FILE}"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
-    sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=development|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=development|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_ENVIRONMENT=development"
-    sed -i'.bak' "s|CODENVY_DEVELOPMENT_REPO=.*|CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_DEVELOPMENT_REPO=.*|CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}"
-    sed -i'.bak' "s|CODENVY_DEVELOPMENT_TOMCAT=.*|CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_DEVELOPMENT_TOMCAT=.*|CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}"
   else
-    sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=production|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=production|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_ENVIRONMENT=production"
   fi
 

@@ -52,7 +52,7 @@ init_logging() {
   mkdir -p "${CODENVY_CLI_LOGS_FOLDER}"
   # Rename existing log file by adding .old suffix
   if [[ -f "${LOGS}" ]]; then
-    mv "${LOGS}" "${LOGS}.old"
+    mv -f "${LOGS}" "${LOGS}.old"
   fi
   # Log date of CLI execution
   log "$(date)"

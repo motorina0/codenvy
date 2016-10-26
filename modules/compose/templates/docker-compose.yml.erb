@@ -12,6 +12,9 @@ services:
   haproxy:
     image: codenvy/haproxy:1.5.18
     volumes:
+<% if scope.lookupvar('codenvy::host_protocol') == 'https' -%>
+      - '<%= scope.lookupvar('compose::path_to_haproxy_ssl_certificate') -%>:/etc/haproxy/cert.pem'
+<% end -%>
       - '<%= scope.lookupvar('compose::codenvy_folder') -%>/config/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - '<%= scope.lookupvar('compose::codenvy_folder') -%>/config/haproxy/maintenance.html:/etc/haproxy/maintenance.html'
       - '<%= scope.lookupvar('compose::codenvy_folder') -%>/logs/haproxy/:/var/log/haproxy/'
