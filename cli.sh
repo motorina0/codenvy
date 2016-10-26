@@ -949,20 +949,6 @@ cmd_stop() {
 cmd_restart() {
   debug $FUNCNAME
 
-  # If container does not exist, we cannot restart.
-  if ! container_exist_by_name $CODENVY_SERVER_CONTAINER_NAME; then
-    info "restart" "Server is not running."
-    return
-  fi 
-
-  # If container exists, but server is not booted, we cannot restart
-  CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
-  if ! container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID} || \
-     ! server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
-     info "restart" "Server is not running." 
-     return
-  fi
-
   FORCE_UPDATE=${1:-"--no-force"}
   if [[ "${FORCE_UPDATE}" == "--force" ]] ||\
      [[ "${FORCE_UPDATE}" == "--pull" ]]; then
