@@ -19,11 +19,8 @@ services:
       - '<%= scope.lookupvar('compose::codenvy_folder') -%>/config/haproxy/maintenance.html:/etc/haproxy/maintenance.html'
       - '<%= scope.lookupvar('compose::codenvy_folder') -%>/logs/haproxy/:/var/log/haproxy/'
     ports:
-<% if scope.lookupvar('codenvy::host_protocol') == 'http' -%>
       - '80:80'
-<% else -%>
       - '443:443'
-<% end -%>
     links:
       - 'nginx:codenvy-nginx'
     ulimits:

@@ -555,9 +555,9 @@ wait_until_server_is_booted () {
 }
 
 server_is_booted() {
-  HTTP_STATUS_CODE=$(curl -I http://$CODENVY_HOST:80/api/ \
+  HTTP_STATUS_CODE=$(curl -I -k $CODENVY_HOST/api/ \
                      -s -o "${LOGS}" --write-out "%{http_code}")
-  if [ "${HTTP_STATUS_CODE}" = "200" ]; then
+  if [[ "${HTTP_STATUS_CODE}" = "200" ]] || [[ "${HTTP_STATUS_CODE}" = "302" ]]; then
     return 0
   else
     return 1
@@ -856,7 +856,7 @@ cmd_config() {
                       $IMAGE_PUPPET \
                           apply --modulepath \
                                 /etc/puppet/modules/ \
-                                /etc/puppet/manifests/codenvy.pp >> "${LOGS}"
+                                /etc/puppet/manifests/codenvy.pp --show_diff >> "${LOGS}"
 
 
   # Replace certain environment file lines with wind
