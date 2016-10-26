@@ -40,7 +40,8 @@ import com.codenvy.machine.CodenvyEnvConfigAgentApplier;
 import com.codenvy.machine.WsAgentHealthCheckerWithAuth;
 import com.codenvy.ldap.LdapModule;
 import com.codenvy.ldap.auth.LdapAuthenticationHandler;
-import com.codenvy.organization.api.OrganizationModule;
+import com.codenvy.organization.api.OrganizationApiModule;
+import com.codenvy.organization.api.OrganizationJpaModule;
 import com.codenvy.plugin.github.factory.resolver.GithubFactoryParametersResolver;
 import com.codenvy.plugin.gitlab.factory.resolver.GitlabFactoryParametersResolver;
 import com.codenvy.report.ReportModule;
@@ -197,7 +198,8 @@ public class OnPremisesIdeApiModule extends AbstractModule {
         install(new OnPremisesJpaMachineModule());
         install(new FactoryJpaModule());
         bind(AccountDao.class).to(JpaAccountDao.class);
-        install(new OrganizationModule());
+        install(new OrganizationApiModule());
+        install(new OrganizationJpaModule());
         install(new ResourceModule());
         bind(FactoryDao.class).to(JpaFactoryDao.class);
         bind(StackDao.class).to(JpaStackDao.class);
@@ -420,6 +422,8 @@ public class OnPremisesIdeApiModule extends AbstractModule {
         // install report sender
         install(new ReportModule());
 
+        bind(org.eclipse.che.api.workspace.server.WorkspaceFilesCleaner.class)
+                .to(com.codenvy.workspace.WorkspaceFilesCleanUpScriptExecutor.class);
         bind(EnvConfigAgentApplier.class).to(CodenvyEnvConfigAgentApplier.class);
         Multibinder<String> envMultibinder =
                 Multibinder.newSetBinder(binder(), String.class, Names.named("machine.docker.machine_env"));

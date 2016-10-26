@@ -35,13 +35,13 @@ import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Optional;
 
 import static java.nio.file.Files.createTempFile;
 import static java.util.Arrays.asList;
+import static java.util.Calendar.JANUARY;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.io.FileUtils.readFileToString;
 import static org.mockito.Matchers.anyString;
@@ -58,7 +58,7 @@ import static org.testng.Assert.assertEquals;
 @Listeners(value = MockitoTestNGListener.class)
 public class AuditManagerTest {
 
-    private static final String FULL_AUDIT_REPORT                    =
+    private static final String FULL_AUDIT_REPORT                                  =
             "Number of all users: 2\n" +
             "Number of users licensed: 15\n" +
             "Date when license expires: 01 January 2016\n" +
@@ -67,7 +67,7 @@ public class AuditManagerTest {
             "   └ Workspace2Name, is owner: false, permissions: [read, use, run, configure, setPermissions]\n" +
             "user2@email.com is owner of 1 workspace and has permissions in 1 workspace\n" +
             "   └ Workspace2Name, is owner: true, permissions: [read, use, run, configure, setPermissions, delete]\n";
-    private static final String AUDIT_REPORT_WITHOUT_LICENSE         =
+    private static final String AUDIT_REPORT_WITHOUT_LICENSE                       =
             "Number of all users: 2\n" +
             "[ERROR] Failed to retrieve license!\n" +
             "user@email.com is owner of 1 workspace and has permissions in 2 workspaces\n" +
@@ -75,7 +75,7 @@ public class AuditManagerTest {
             "   └ Workspace2Name, is owner: false, permissions: [read, use, run, configure, setPermissions]\n" +
             "user2@email.com is owner of 1 workspace and has permissions in 1 workspace\n" +
             "   └ Workspace2Name, is owner: true, permissions: [read, use, run, configure, setPermissions, delete]\n";
-    private static final String AUDIT_REPORT_WITHOUT_USER_WORKSPACES =
+    private static final String AUDIT_REPORT_WITHOUT_USER_WORKSPACES               =
             "Number of all users: 2\n" +
             "Number of users licensed: 15\n" +
             "Date when license expires: 01 January 2016\n" +
@@ -83,15 +83,15 @@ public class AuditManagerTest {
             "user2@email.com is owner of 1 workspace and has permissions in 1 workspace\n" +
             "   └ Workspace2Name, is owner: true, permissions: [read, use, run, configure, setPermissions, delete]\n";
     private static final String AUDIT_REPORT_WITHOUT_USER_PERMISSIONS_TO_WORKSPACE =
-            "Number of all users: 2\n"+
-            "Number of users licensed: 15\n"+
-            "Date when license expires: 01 January 2016\n"+
-            "user@email.com is owner of 0 workspaces and has permissions in 2 workspaces\n"+
-            "   └ Workspace1Name, is owner: false, permissions: [read, use, run, configure, setPermissions, delete]\n"+
-            "   └ Workspace2Name, is owner: false, permissions: [read, use, run, configure, setPermissions]\n"+
-            "user2@email.com is owner of 2 workspaces and has permissions in 1 workspace\n"+
-            "   └ Workspace2Name, is owner: true, permissions: [read, use, run, configure, setPermissions, delete]\n"+
-            "   └ Workspace1Name, is owner: true, permissions: []\n";
+            "Number of all users: 2\n" +
+            "Number of users licensed: 15\n" +
+            "Date when license expires: 01 January 2016\n" +
+            "user@email.com is owner of 0 workspaces and has permissions in 2 workspaces\n" +
+            "   └ Workspace1Name, is owner: false, permissions: [read, use, run, configure, setPermissions, delete]\n" +
+            "   └ Workspace2Name, is owner: false, permissions: [read, use, run, configure, setPermissions]\n" +
+            "user2@email.com is owner of 2 workspaces and has permissions in 1 workspace\n" +
+            "   └ Workspace1Name, is owner: true, permissions: []\n" +
+            "   └ Workspace2Name, is owner: true, permissions: [read, use, run, configure, setPermissions, delete]\n";
 
     private Path auditReport;
 
@@ -115,7 +115,7 @@ public class AuditManagerTest {
         //License
         CodenvyLicense license = mock(CodenvyLicense.class);
         when(license.getNumberOfUsers()).thenReturn(15);
-        when(license.getExpirationDate()).thenReturn(new SimpleDateFormat("dd MMMM yyyy").parse("01 January 2016"));
+        when(license.getExpirationDate()).thenReturn(new GregorianCalendar(2016, JANUARY, 1).getTime());
         when(licenseManager.load()).thenReturn(license);
         //User
         UserImpl user1 = mock(UserImpl.class);
@@ -159,7 +159,7 @@ public class AuditManagerTest {
         //Page
         Page page = mock(Page.class);
         when(page.getItems()).thenReturn(asList(user1, user2));
-        when(page.getNextPageRef()).thenReturn(Optional.empty());
+        when(page.hasNextPage()).thenReturn(false);
         when(userManager.getAll(1, 0)).thenReturn(page);
         when(userManager.getAll(30, 0)).thenReturn(page);
 

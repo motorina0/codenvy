@@ -43,7 +43,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -159,15 +158,9 @@ public class AuditManager {
     }
 
     private Page<UserImpl> getNextPage(Page<UserImpl> currentPage) throws ServerException {
-        final Optional<PageRef> nextPageRefOpt = currentPage.getNextPageRef();
-        if (nextPageRefOpt.isPresent()) {
-            final PageRef nextPageRef = nextPageRefOpt.get();
-            final long itemsBefore = nextPageRef.getItemsBefore();
-            //TODO: fix when https://github.com/eclipse/che/issues/2524 will be resolved
-            if (itemsBefore < Integer.MAX_VALUE) {
-                throw new ServerException("Skip count limit was reached while retrieving all users");
-            }
-            return userManager.getAll(nextPageRef.getPageSize(), (int)itemsBefore);
+        if (currentPage.hasNextPage()) {
+            final PageRef nextPageRef = currentPage.getNextPageRef();
+            return userManager.getAll(nextPageRef.getPageSize(), nextPageRef.getItemsBefore());
         } else {
             return null;
         }
