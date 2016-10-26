@@ -33,23 +33,23 @@ cli_init() {
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${DEFAULT_CODENVY_DEVELOPMENT_REPO})
-    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]]; then 
+    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]]; then
       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
       info "cli" "Set CODENVY_DEVELOPMENT_REPO to the root of your git clone repo"
       return 2
     fi
-    if [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/ >> "${LOGS}" 2>&1) ]]; then
+    if [[ ! -d $(echo "${DEFAULT_CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
       info "cli" "Development mode is on and could not find valid Tomcat assembly"
       info "cli" "Have you built /assembly/onpremises-ide-packaging-tomcat-codenvy-allinone yet?"
       return 2
-    else 
+    else
       CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $DEFAULT_CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
     fi
   fi
 
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
   CODENVY_MANIFEST_DIR=$(get_mount_path ~/."${CHE_MINI_PRODUCT_NAME}"/manifests)
-  
+
   CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
   CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
   CODENVY_BACKUP_FOLDER="${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"
@@ -93,14 +93,14 @@ cli_init() {
 Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     help                                 This message
     version                              Installed version and upgrade paths
-    init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration 
+    init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration
     start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
     stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
     restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
     destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
     rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
-    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster 
+    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster
     remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
     upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
     download [--pull|--force|--offline]  Pulls Docker images for CODENVY_VERSION, or if installed, $CODENVY_VERSION_FILE
@@ -148,15 +148,15 @@ cli_parse () {
 cli_cli() {
   case ${CHE_CLI_ACTION} in
     download)
-      shift 
+      shift
       cmd_download "$@"
     ;;
     init)
-      shift 
+      shift
       cmd_init "$@"
     ;;
     config)
-      shift 
+      shift
       cmd_config "$@"
     ;;
     start)
@@ -168,15 +168,15 @@ cli_cli() {
       cmd_stop "$@"
     ;;
     restart)
-      shift 
+      shift
       cmd_restart "$@"
     ;;
     destroy)
-      shift 
+      shift
       cmd_destroy "$@"
     ;;
     rmi)
-      shift 
+      shift
       cmd_rmi "$@"
     ;;
     upgrade)
@@ -184,7 +184,7 @@ cli_cli() {
       cmd_upgrade "$@"
     ;;
     version)
-      shift 
+      shift
       cmd_version "$@"
     ;;
     backup)
@@ -423,7 +423,7 @@ update_image_if_not_found() {
 
 update_image() {
   debug $FUNCNAME
-  
+
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
@@ -637,7 +637,7 @@ get_image_manifest() {
   info "cli" "Checking registry for version '$1' images"
   if ! has_version_registry $1; then
     version_error $1
-    return 1;  
+    return 1;
   fi
 
   IMAGE_LIST=$(cat "$CODENVY_MANIFEST_DIR"/$1/images)
@@ -747,9 +747,9 @@ cmd_init() {
       return 1
     fi
   fi
-  
+
   cmd_download $FORCE_UPDATE
-  
+
   if [ -z ${IMAGE_INIT+x} ]; then
     get_image_manifest $CODENVY_VERSION
   fi
@@ -819,7 +819,7 @@ cmd_config() {
   if ! is_initialized; then
     cmd_init $FORCE_UPDATE
   elif [[ "${FORCE_UPDATE}" == "--pull" ]] || \
-       [[ "${FORCE_UPDATE}" == "--force" ]]; then 
+       [[ "${FORCE_UPDATE}" == "--force" ]]; then
     cmd_download $FORCE_UPDATE
   fi
 
@@ -920,7 +920,7 @@ cmd_start() {
     return 1;
   fi
   text "\n"
-  
+
   # Start Codenvy
   # Note bug in docker requires relative path, not absolute path to compose file
   info "start" "Starting containers..."
@@ -953,13 +953,13 @@ cmd_restart() {
   if ! container_exist_by_name $CODENVY_SERVER_CONTAINER_NAME; then
     info "restart" "Server is not running."
     return
-  fi 
+  fi
 
   # If container exists, but server is not booted, we cannot restart
   CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
   if ! container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID} || \
      ! server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
-     info "restart" "Server is not running." 
+     info "restart" "Server is not running."
      return
   fi
 
@@ -1004,7 +1004,7 @@ cmd_rmi() {
   info "rmi" "Checking registry for version '$CODENVY_VERSION' images"
   if ! has_version_registry $CODENVY_VERSION; then
     version_error $CODENVY_VERSION
-    return 1;  
+    return 1;
   fi
 
   WARNING="rmi !!! Removing images disables codenvy and forces a pull !!!"
@@ -1080,7 +1080,7 @@ cmd_backup() {
     WARNING="Previous backup will be overwritten."
     if ! confirm_operation "${WARNING}" "$@"; then
       return;
-    fi 
+    fi
   fi
 
   if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" >> "${LOGS}" 2>&1; then
@@ -1099,7 +1099,7 @@ cmd_restore() {
 
   if [[ -d "${CODENVY_CONFIG}" ]] || \
      [[ -d "${CODENVY_INSTANCE}" ]]; then
-    
+
     WARNING="Restoration overwrites existing configuration and data. Are you sure?"
     if ! confirm_operation "${WARNING}" "$@"; then
       return;
@@ -1114,7 +1114,7 @@ cmd_restore() {
   info "restore" "Recovering configuration..."
   rm -rf "${CODENVY_INSTANCE}"
   rm -rf "${CODENVY_CONFIG}"
-  mkdir -p "${CODENVY_CONFIG}"  
+  mkdir -p "${CODENVY_CONFIG}"
   tar -C "${CODENVY_CONFIG}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}"
   info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
@@ -1125,7 +1125,7 @@ cmd_offline() {
   info "offline" "Checking registry for version '$CODENVY_VERSION' images"
   if ! has_version_registry $CODENVY_VERSION; then
     version_error $CODENVY_VERSION
-    return 1;  
+    return 1;
   fi
 
   # Make sure the images have been pulled and are in your local Docker registry
@@ -1322,9 +1322,9 @@ cmd_remove_node() {
   cmd_restart
 }
 
-# Shows list of the docker nodes in the swarm cluster 
+# Shows list of the docker nodes in the swarm cluster
 cmd_list_nodes() {
-  ## TODO use 
+  ## TODO use
   ## - config to get all configured nodes
   ## - instance to get all registered nodes
   ## - call to swarm api to get all enabled nodes
