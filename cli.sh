@@ -836,6 +836,16 @@ cmd_config() {
     get_image_manifest $CODENVY_VERSION
   fi
 
+  # if dev mode is on, pick configuration sources from repo.
+  # please note that in production mode update of configuration sources must be only on update.
+  if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
+    # docker pull codenvy/bootstrap with current directory as volume mount.
+    docker_exec run --rm \
+                    -v "${CODENVY_CONFIG}":/copy \
+                    -v "${CODENVY_DEVELOPMENT_REPO}":/files \
+                       $IMAGE_INIT
+  fi
+
   info "config" "Generating codenvy configuration..."
   # Generate codenvy configuration using puppet
   # Note - bug in docker requires relative path for env, not absolute
@@ -848,16 +858,25 @@ cmd_config() {
                           apply --modulepath \
                                 /etc/puppet/modules/ \
                                 /etc/puppet/manifests/codenvy.pp >> \"${LOGS}\""
-  docker_exec run -it --rm \
-                  --env-file="${REFERENCE_ENVIRONMENT_FILE}" \
-                  -v "${CODENVY_INSTANCE}":/opt/codenvy:rw \
-                  -v "${CODENVY_CONFIG_MANIFESTS_FOLDER}":/etc/puppet/manifests:ro \
-                  -v "${CODENVY_CONFIG_MODULES_FOLDER}":/etc/puppet/modules:ro \
-                      $IMAGE_PUPPET \
-                          apply --modulepath \
-                                /etc/puppet/modules/ \
-                                /etc/puppet/manifests/codenvy.pp --show_diff >> "${LOGS}"
 
+  run_puppet() {
+      docker_exec run -it --rm \
+                      --env-file="${REFERENCE_ENVIRONMENT_FILE}" \
+                      -v "${CODENVY_INSTANCE}":/opt/codenvy:rw \
+                      -v "${CODENVY_CONFIG_MANIFESTS_FOLDER}":/etc/puppet/manifests:ro \
+                      -v "${CODENVY_CONFIG_MODULES_FOLDER}":/etc/puppet/modules:ro \
+                          $IMAGE_PUPPET \
+                              apply --modulepath \
+                                    /etc/puppet/modules/ \
+                                    /etc/puppet/manifests/codenvy.pp "$@"
+  }
+
+  # redirect puppet output to logs only if dev mode is off
+  if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
+     run_puppet --show_diff
+  else
+     run_puppet --show_diff >> "${LOGS}"
+  fi
 
   # Replace certain environment file lines with wind
   if has_docker_for_windows_client; then
