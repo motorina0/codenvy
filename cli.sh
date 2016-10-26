@@ -794,14 +794,14 @@ cmd_init() {
   sed -i'.bak' "s|#CODENVY_SWARM_NODES=.*|CODENVY_SWARM_NODES=${CODENVY_HOST}:23750|" "${REFERENCE_ENVIRONMENT_FILE}"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
-    sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=development|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=development|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_ENVIRONMENT=development"
-    sed -i'.bak' "s|CODENVY_DEVELOPMENT_REPO=.*|CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_DEVELOPMENT_REPO=.*|CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO}"
-    sed -i'.bak' "s|CODENVY_DEVELOPMENT_TOMCAT=.*|CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_DEVELOPMENT_TOMCAT=.*|CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT}"
   else
-    sed -i'.bak' "s|CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=production|" "${REFERENCE_ENVIRONMENT_FILE}"
+    sed -i'.bak' "s|#CODENVY_ENVIRONMENT=.*|CODENVY_ENVIRONMENT=production|" "${REFERENCE_ENVIRONMENT_FILE}"
     info "init" "  CODENVY_ENVIRONMENT=production"
   fi
 
@@ -948,20 +948,6 @@ cmd_stop() {
 
 cmd_restart() {
   debug $FUNCNAME
-
-  # If container does not exist, we cannot restart.
-  if ! container_exist_by_name $CODENVY_SERVER_CONTAINER_NAME; then
-    info "restart" "Server is not running."
-    return
-  fi
-
-  # If container exists, but server is not booted, we cannot restart
-  CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
-  if ! container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID} || \
-     ! server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
-     info "restart" "Server is not running."
-     return
-  fi
 
   FORCE_UPDATE=${1:-"--no-force"}
   if [[ "${FORCE_UPDATE}" == "--force" ]] ||\
