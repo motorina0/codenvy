@@ -203,6 +203,7 @@ node default {
   $user_self_creation_allowed = getValue("CODENVY_USER_SELF_CREATION_ALLOWED","true")
 # Limits
   $limits_user_workspaces_count = getValue("CODENVY_LIMITS_USER_WORKSPACES_COUNT","30")
+  $limits_user_workspaces_run_count = getValue("CODENVY_LIMITS_USER_WORKSPACES_RUN_COUNT","10")
   $limits_user_workspaces_ram = getValue("CODENVY_LIMITS_USER_WORKSPACES_RAM","100gb")
   $limits_organization_workspaces_ram = getValue("CODENVY_LIMITS_ORGANIZATION_WORKSPACES_RAM","100gb")
   $limits_workspace_env_ram = getValue("CODENVY_LIMITS_WORKSPACE_ENV_RAM","16gb")
@@ -282,11 +283,11 @@ node default {
   $marketo_host_url = getValue("CODENVY_MARKETO_HOST_URL","")
   $marketo_clientid = getValue("CODENVY_MARKETO_CLIENTID","")
   $marketo_client_secret = getValue("CODENVY_MARKETO_CLIENT_SECRET","")
-  $marketo_classic_codenvy_user_name = getValue("CODENVY_MARKETO_CLASSIC_CODENVY_USER_NAME","")
-  $marketo_classic_codenvy_user_password = getValue("CODENVY_MARKETO_CLASSIC_CODENVY_USER_PASSWORD","")
   $marketo_send_lead_time_out_ms = getValue("CODENVY_MARKETO_SEND_LEAD_TIME_OUT_MS","")
   $marketo_batch_lead_size = getValue("CODENVY_MARKETO_BATCH_LEAD_SIZE","")
   $marketo_send_lead_amount_trying = getValue("CODENVY_MARKETO_SEND_LEAD_AMOUNT_TRYING","")
+  $marketo_classic_codenvy_user_name = getValue("CODENVY_MARKETO_CLASSIC_CODENVY_USER_NAME","")
+  $marketo_classic_codenvy_user_password = getValue("CODENVY_MARKETO_CLASSIC_CODENVY_USER_PASSWORD","")
 
 ###############################
 #

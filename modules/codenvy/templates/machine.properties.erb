@@ -83,3 +83,7 @@ machine.server.extra.volume=<%= scope.lookupvar('codenvy::machine_server_extra_v
 
 # public key for rsync
 workspace.backup.public_key_path=/opt/codenvy-data/conf/ssh/key.pem.pub
+
+#cleanup workspace files
+workspace.projects_storage.cleanup.script_path=/opt/codenvy-data/conf/cleanUpWorkspaceStorage.sh
+workspace.projects_storage.cleanup.timeout_seconds=300

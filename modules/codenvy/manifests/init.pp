@@ -192,4 +192,12 @@ class codenvy {
     creates => "/opt/codenvy/config/codenvy/conf/ssh/key.pem",
     require => File[$config_dirs],
   }
+
+# creating cleanUpWorkspaceStorage.sh
+  file { "/opt/codenvy/config/codenvy/conf/cleanUpWorkspaceStorage.sh":
+    ensure  => "present",
+    content => template("codenvy/cleanUpWorkspaceStorage.sh.erb"),
+    mode    => "755",
+    require => File[$config_dirs],
+  }
 }
