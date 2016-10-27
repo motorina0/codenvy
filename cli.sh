@@ -648,7 +648,25 @@ get_image_manifest() {
   done
 }
 
-get_upgrade_manifest() {
+can_upgrade() {
+  #  4.7.2 -> 5.0.0-M2-SNAPSHOT  <insert-syntax>
+  #  4.7.2 -> 4.7.3              <insert-syntax>
+  while IFS='' read -r line || [[ -n "$line" ]]; do
+    VER=$(echo $line | cut -d ' ' -f1)
+    UPG=$(echo $line | cut -d ' ' -f2)
+
+    # Loop through and find all matching versions
+    if [[ "${VER}" == "${1}" ]]; then
+      if [[ "${UPG}" == "${2}" ]]; then
+        return 0
+      fi
+    fi
+  done < "$CODENVY_MANIFEST_DIR"/upgrades
+
+  return 1
+}
+
+print_upgrade_manifest() {
   #  4.7.2 -> 5.0.0-M2-SNAPSHOT  <insert-syntax>
   #  4.7.2 -> 4.7.3              <insert-syntax>
   while IFS='' read -r line || [[ -n "$line" ]]; do
@@ -662,7 +680,7 @@ get_upgrade_manifest() {
   done < "$CODENVY_MANIFEST_DIR"/upgrades
 }
 
-get_version_manifest() {
+print_version_manifest() {
   while IFS='' read -r line || [[ -n "$line" ]]; do
     VER=$(echo $line | cut -d ' ' -f1)
     CHA=$(echo $line | cut -d ' ' -f2)
@@ -1036,12 +1054,28 @@ cmd_rmi() {
 cmd_upgrade() {
   debug $FUNCNAME
   info "upgrade" "Not yet implemented"
+
+  if [ $# -eq 0 ]; then
+    info "upgrade" "No upgrade target provided. Run '${CHE_MINI_PRODUCT_NAME} version' for a list of upgradeable versions."
+    return 2;
+  fi
+
+  if ! can_upgrade $(get_installed_version) ${1}; then
+    info "upgrade" "Your current version $(get_installed_version) is not upgradeable to $1."
+    info "upgrade" "Run '${CHE_MINI_PRODUCT_NAME} version' to see your upgrade options."
+    return 2;
+  fi
+
+  # If here, this version is validly upgradeable.  You can upgrade from
+  # $(get_installed_version) to $1
+  echo "remove me -- you entered a version that you can upgrade to"
+
 }
 
 cmd_version() {
   debug $FUNCNAME
 
-  error "!!! this information - experimental - upgrade not yet avail !!!"
+  error "!!! this information is experimental - upgrade not yet available !!!"
   text "Codenvy:\n"
   text "  Version:      %s\n" $(get_installed_version)
   text "  Installed:    %s\n" $(get_installed_installdate)
@@ -1051,16 +1085,16 @@ cmd_version() {
     text "\n"
     text "Upgrade Options:\n"
     text "  INSTALLED VERSION        UPRADEABLE TO\n"
-    get_upgrade_manifest $(get_installed_version)
+    print_upgrade_manifest $(get_installed_version)
   fi
 
   text "\n"
   text "Available:\n"
   text "  VERSION                  CHANNEL           UPGRADEABLE FROM\n"
   if is_initialized; then
-    get_version_manifest $(get_installed_version)
+    print_version_manifest $(get_installed_version)
   else
-    get_version_manifest $CODENVY_VERSION
+    print_version_manifest $CODENVY_VERSION
   fi
 }
 
