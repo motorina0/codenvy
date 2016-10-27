@@ -715,6 +715,31 @@ confirm_operation() {
   fi
 }
 
+# Runs puppet image to generate codenvy configuration
+generate_configuration_with_puppet() {
+  debug $FUNCNAME
+  info "config" "Generating codenvy configuration..."
+  # Note - bug in docker requires relative path for env, not absolute
+  log "docker_exec run -it --rm \
+                  --env-file=\"${REFERENCE_ENVIRONMENT_FILE}\" \
+                  -v \"${CODENVY_INSTANCE}\":/opt/codenvy:rw \
+                  -v \"${CODENVY_CONFIG_MANIFESTS_FOLDER}\":/etc/puppet/manifests:ro \
+                  -v \"${CODENVY_CONFIG_MODULES_FOLDER}\":/etc/puppet/modules:ro \
+                      $IMAGE_PUPPET \
+                          apply --modulepath \
+                                /etc/puppet/modules/ \
+                                /etc/puppet/manifests/codenvy.pp --show_diff \"$@\""
+  docker_exec run -it --rm \
+                  --env-file="${REFERENCE_ENVIRONMENT_FILE}" \
+                  -v "${CODENVY_INSTANCE}":/opt/codenvy:rw \
+                  -v "${CODENVY_CONFIG_MANIFESTS_FOLDER}":/etc/puppet/manifests:ro \
+                  -v "${CODENVY_CONFIG_MODULES_FOLDER}":/etc/puppet/modules:ro \
+                      $IMAGE_PUPPET \
+                          apply --modulepath \
+                                /etc/puppet/modules/ \
+                                /etc/puppet/manifests/codenvy.pp --show_diff "$@"
+}
+
 ###########################################################################
 ### END HELPER FUNCTIONS
 ###
@@ -846,36 +871,11 @@ cmd_config() {
                        $IMAGE_INIT
   fi
 
-  info "config" "Generating codenvy configuration..."
-  # Generate codenvy configuration using puppet
-  # Note - bug in docker requires relative path for env, not absolute
-  log "docker_exec run -it --rm \
-                  --env-file=\"${REFERENCE_ENVIRONMENT_FILE}\" \
-                  -v \"${CODENVY_INSTANCE}\":/opt/codenvy:rw \
-                  -v \"${CODENVY_CONFIG_MANIFESTS_FOLDER}\":/etc/puppet/manifests:ro \
-                  -v \"${CODENVY_CONFIG_MODULES_FOLDER}\":/etc/puppet/modules:ro \
-                      $IMAGE_PUPPET \
-                          apply --modulepath \
-                                /etc/puppet/modules/ \
-                                /etc/puppet/manifests/codenvy.pp >> \"${LOGS}\""
-
-  run_puppet() {
-      docker_exec run -it --rm \
-                      --env-file="${REFERENCE_ENVIRONMENT_FILE}" \
-                      -v "${CODENVY_INSTANCE}":/opt/codenvy:rw \
-                      -v "${CODENVY_CONFIG_MANIFESTS_FOLDER}":/etc/puppet/manifests:ro \
-                      -v "${CODENVY_CONFIG_MODULES_FOLDER}":/etc/puppet/modules:ro \
-                          $IMAGE_PUPPET \
-                              apply --modulepath \
-                                    /etc/puppet/modules/ \
-                                    /etc/puppet/manifests/codenvy.pp "$@"
-  }
-
-  # redirect puppet output to logs only if dev mode is off
+  # print puppet output logs to console if dev mode is on
   if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
-     run_puppet --show_diff
+     generate_configuration_with_puppet
   else
-     run_puppet --show_diff >> "${LOGS}"
+     generate_configuration_with_puppet >> "${LOGS}"
   fi
 
   # Replace certain environment file lines with wind
