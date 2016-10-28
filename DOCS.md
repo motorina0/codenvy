@@ -316,7 +316,7 @@ If you need to backup your Postgres data, run the following command:
 ## Scaling
 Codenvy workspaces can run on different physical nodes that are part of a Codenvy cluster managed by Docker Swarm. This is an essential part of managing large development teams, as workspaces are both RAM and CPU intensive operations, and developers do not like to share their computing power when they have a compilation that they want done. So you will want to allocate enough physical nodes to smartly handle the right number of concurrently *running* workspaces, each of which will have a RAM block.
 
-TODO: Pull in sizing docs from docs.codenvy.com into this section. They are unchanged in this world.
+TODO: https://codenvy.readme.io/v5.0/docs/installation#sizing
 
 You can add as many physical nodes inot a Codenvy cluster, and Codenvy will schedule workspaces for placement on those nodes. You can use the `codenvy add-node` command which generates a utility for you to run on each node that should be added to the cluster. You can also run `codenvy remove-node` to automate the removal of the node from the cluster and the movement of any remaining workspaces onto another node. 
 
