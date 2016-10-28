@@ -10,11 +10,12 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
   - [Docker in a VM]()
   - [Workspaces]()
 - [Installation](#installation)
-  - [Linux]()
-  - [Mac]()
-  - [Windows]()
-  - [Proxies]()
-  - [Offline Installation](#offline-installation)
+  - [Linux](#linux)
+  - [Mac](#mac)
+  - [Windows](#windows)
+  - [Proxies](#proxies)
+- [Offline Installation](#offline-installation)
+  - [Save Docker Images](save-docker-images)
 - [Quick Start](#quick-start)
   - [Hosting](#hosting)
 - [Uninstall]()
@@ -22,9 +23,15 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
   - [SMTP](#smtp-configuration)
   - [oAuth](#oauth)
   - [Workspaces]()
+  - [HTTP/HTTPS](http://codenvy.readme.io/docs/security)
+  - [Hostname]()
+  - [LDAP]()
 - [Logs and User Data](#logs-and-user-data)
 - [Upgrading](#Updates)
 - [Scaling](#Scaling)
+- [Licensing]()
+- [User Management]()
+- [Permissions]()
 - [Backup and Recovery](#Backups)
 - [Development Mode](#development-mode)
 - [Migration](#migration)
@@ -107,7 +114,7 @@ In the non-container installation version of Codenvy, this requirement does not 
 ## Installation
 Get the Codenvy CLI. The Codenvy images and supporting utilities are downloaded and maintained by the CLI. The CLI also provides utilities for downloading an offline bundle to run Codenvy while disconnected from the network.
 
-### Linux
+#### Linux
 ```
 sudo curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > /usr/local/bin/codenvy
 sudo curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > /usr/local/bin/cli.sh
@@ -115,7 +122,7 @@ chmod +x /usr/local/bin/codenvy
 chmod +x /usr/local/bin/cli.sh
 ```
 
-### Mac
+#### Mac
 ```
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > /usr/local/bin/codenvy
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > /usr/local/bin/cli.sh
@@ -134,7 +141,7 @@ sudo ifconfig lo0 alias $DOCKER_VM_IP
 # Add this to your ~/.bash_profile to have it activated in each shell window
 ```
 
-### Windows
+#### Windows
 ```
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.sh > che.sh
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.bat > che.bat
@@ -148,7 +155,7 @@ codenvy help
 ```
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
-### Proxies
+#### Proxies
 We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are three proxy configurations:
 1. Configuring Docker proxy access so that Codenvy can download images from DockerHub.
 2. Configuring Codenvy's system containers so that internal services can proxy to the Internet.
@@ -223,7 +230,7 @@ user: admin
 pass: password
 ```
 
-### Hosting
+#### Hosting
 We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
 
 ## Uninstall
@@ -249,7 +256,7 @@ If you run `codenvy config`, Codenvy runs puppet to transform your puppet templa
 
 When doing an initialization, if you have `CODENVY_VERSION`, `CODENVY_HOST`, `CODENVY_CONFIG`, or `CODENVY_INSTANCE` set, then those values will be inserted into your `CODENVY_CONFIG/codenvy.env` template. After initialization, you can edit any environmen variable and rerun `codenvy config` to update the system.
 
-### SMTP
+#### SMTP
 By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
 
 ```
@@ -264,7 +271,7 @@ CODENVY_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
 CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
 ```
 
-### oAuth
+#### oAuth
 You can configure Google, GitHub, Microsoft, BitBucket, or WSO2 oAuth for use when users login or create an account.
 
 Codenvy is shipped with a preconfigured GitHub oAuth application for the `codenvy.onprem` hostname. To enable GitHub oAuth, add `CODENVY_HOST=codenvy.onprem` to `CODENVY_CONFIG/codenvy.env` and restart. If you have a custom DNS, you need to register a GitHub oAuth application with GitHub's oAuth registration service. You will be asked for the callback URL, which is `http://<your_hostname>/api/oauth/callback`. You will receive from GitHub a client ID and secret, which must be added to `codenvy.env`:
@@ -279,8 +286,82 @@ CODENVY_GOOGLE_CLIENT_ID=yourID
 CODENVY_GOOGLE_SECRET=yourSecret
 ```
 
-### Workspace Limits
+#### Workspace Limits
 You can place limits on how users interact with the system to control overall system resource usage. You can define how many workspaces created, RAM consumed, idle timeout, and a variety of other parameters. See "Workspace Limits" in `CODENVY_CONFIG/codenvy.env`.
+
+#### HTTP/HTTPS
+By default Codenvy runs over HTTP as this is simplest to install. You can switch to HTTPS at any time.
+
+TODO: [https://codenvy.readme.io/v5.0/docs/security](https://codenvy.readme.io/v5.0/docs/security)
+
+#### Hostname
+If you install Codenvy with the defaults, Codenvy is reachable at http://codenvy.onprem. You can change the hostname by using the CLI with codenvy config --hostname=<hostname> . 
+
+## LDAP
+Codenvy is compatible with an InetOrgPerson.schema. For other schemas please contact us at info@codenvy.com.
+
+#### LDAP AUTHENTICATION
+User authentication is implemented as follows:
+
+1. Search for for user DN according to the provided name. It can be performed in two ways: either by a given DN format, or based on a user search query.
+2. To verify the user's password two functions can be used: ldap bind or ldap compare.
+3. If username and password match, the LDAP entry is taken and transformed to obtain UserID (this is where synchronization configuration mechanism is applied).
+4. Checks if the user with a given ID already exists in the Codenvy database. If it doesn't user is authenticated.
+
+TODO: Add table.
+
+#### Authentication Configuration
+TODO: Add table.
+
+#### Connection Configuration
+TODO: Add table.
+
+#### SSL Configuration
+TODO: Add table.
+
+#### SASL Configuration
+TODO: Add table.
+
+#### Synchronizer Terminology
+- LDAP storage - third party directory server considered as primary users storage.
+- LDAP cache - a storage in Codenvy database, which basically is a mirror of LDAP storage.
+- Synchronized user - a user who is present in LDAP cache.
+- Synchronization candidate - a user present in LDAP storage matching all the filters and groups, the user who is going to be synchronized.
+- Codenvy User - entity in Codenvy API. A user is stored in Codenvy database (PosgreSQL).
+
+#### Synchronization Strategy
+The data in the LDAP cache is considered to be consistent as long as the synchronizer does its job. Synchronization itself is unidirectional, requiring only a READ restricted connection to LDAP server.
+
+- If the synchronizer can't retrieve users from LDAP storage, it fails.
+- If the synchronizer can't store/update a user in LDAP cache it prints a warning with a reason and continues synchronization.
+- If synchronization candidate is missing from LDAP cache, an appropriate User and Profile will be created.
+- If synchronization candidate is present in LDAP cache, the User and Profile will be refreshed with data from LDAP storage(replacing the entity in the LDAP cache).
+- If LDAP cache contains synchronized users who are missing from LDAP storage those users will be removed by the next synchronization iteration.
+There are 2 possible strategies for synchronization:
+
+1. Synchronization period is configured and synchronization is periodical.
+2. Synchronization period is set to -1 then synchronization is executed once per server start after the configured initial delay. 
+
+Synchronization can also be triggered by a REST API call:
+
+POST <host>/api/sync/ldap
+
+This won't change the execution of a periodical synchronization, but it is guaranteed that 2 parallel synchronizations won't be executed.
+
+#### Synchronization Configuration
+TODO: Add table.
+
+#### Synchronization User Selection Configuration
+TODO: Add table.
+
+#### Synchronization Group Configuration
+TODO: Add table.
+
+#### Synchronization Data Configuration
+TODO: Add table.
+
+#### ACTIVE DIRECTORY EXAMPLE
+TODO: Add content.
 
 ## Logs and User Data
 When Codenvy initializes itself, it creates a `/instance` folder in the directory to store logs, user data, the database, and instance-specific configuration. Codenvy's containers are started with `host:container` volume bindings to mount this information into and out of the containers that require it. You can save the `/instance` folder as a backup for an entire Codenvy instance. 
@@ -316,7 +397,7 @@ If you need to backup your Postgres data, run the following command:
 ## Scaling
 Codenvy workspaces can run on different physical nodes that are part of a Codenvy cluster managed by Docker Swarm. This is an essential part of managing large development teams, as workspaces are both RAM and CPU intensive operations, and developers do not like to share their computing power when they have a compilation that they want done. So you will want to allocate enough physical nodes to smartly handle the right number of concurrently *running* workspaces, each of which will have a RAM block.
 
-TODO: Pull in sizing docs from docs.codenvy.com into this section. They are unchanged in this world.
+TODO: https://codenvy.readme.io/v5.0/docs/installation#sizing
 
 You can add as many physical nodes inot a Codenvy cluster, and Codenvy will schedule workspaces for placement on those nodes. You can use the `codenvy add-node` command which generates a utility for you to run on each node that should be added to the cluster. You can also run `codenvy remove-node` to automate the removal of the node from the cluster and the movement of any remaining workspaces onto another node. 
 
