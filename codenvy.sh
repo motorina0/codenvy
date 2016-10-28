@@ -48,12 +48,12 @@ init_logging() {
   test -d "${CLI_DIR}" || mkdir -p "${CLI_DIR}"
 
   # Initialize logging into a log file
-  DEFAULT_CODENVY_CLI_LOGS_FOLDER="${CLI_DIR}"
-  CODENVY_CLI_LOGS_FOLDER="${CODENVY_CLI_LOGS_FOLDER:-${DEFAULT_CODENVY_CLI_LOGS_FOLDER}}"
+  DEFAULT_CHE_CLI_LOGS_FOLDER="${CLI_DIR}"
+  CHE_CLI_LOGS_FOLDER="${CHE_CLI_LOGS_FOLDER:-${DEFAULT_CHE_CLI_LOGS_FOLDER}}"
 
   # Ensure logs folder exists
-  LOGS="${CODENVY_CLI_LOGS_FOLDER}/cli.log"
-  mkdir -p "${CODENVY_CLI_LOGS_FOLDER}"
+  LOGS="${CHE_CLI_LOGS_FOLDER}/cli.log"
+  mkdir -p "${CHE_CLI_LOGS_FOLDER}"
   # Rename existing log file by adding .old suffix
   if [[ -f "${LOGS}" ]]; then
     mv -f "${LOGS}" "${LOGS}.old"
@@ -333,6 +333,16 @@ curl() {
 update_cli() {
   info "cli" "Downloading cli-$CHE_CLI_VERSION"
 
+  # If the che.sh is running from within the Che source repo, then 
+  # copy cli.sh from the repo to ~/.che and then return.
+  if [[ $(get_script_source_dir) != ~/."${CHE_MINI_PRODUCT_NAME}"/cli ]]; then
+    log "cp -rf $(get_script_source_dir)/cli.sh ~/.\"${CHE_MINI_PRODUCT_NAME}\"/cli/cli-$CHE_CLI_VERSION.sh"
+    cp -rf $(get_script_source_dir)/cli.sh ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
+    return
+  fi
+
+  # We are downloading the CLI from the hosted repository.
+  # We will download a version that is tagged from GitHub.
   if [[ "${CHE_CLI_VERSION}" = "latest" ]] || \
      [[ "${CHE_CLI_VERSION}" = "nightly" ]] || \
      [[ ${CHE_CLI_VERSION:0:1} == "4" ]]; then
@@ -341,15 +351,8 @@ update_cli() {
     GITHUB_VERSION=$CHE_CLI_VERSION
   fi
 
-  # If the codenvy.sh is running from the codenvy source repo, then always use cli.sh that is there
-  if [[ $(get_script_source_dir) != ~/."${CHE_MINI_PRODUCT_NAME}"/cli ]]; then
-    log "cp -rf $(get_script_source_dir)/cli.sh ~/.\"${CHE_MINI_PRODUCT_NAME}\"/cli/cli-$CHE_CLI_VERSION.sh"
-    cp -rf $(get_script_source_dir)/cli.sh ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-$CHE_CLI_VERSION.sh
-    return
-  fi
-
   # We are downloading the CLI from the core repository.
-  URL=https://raw.githubusercontent.com/codenvy/codenvy/$GITHUB_VERSION/cli.sh
+  URL=https://raw.githubusercontent.com/${CHE_MINI_PRODUCT_NAME}/${CHE_MINI_PRODUCT_NAME}/$GITHUB_VERSION/cli.sh
 
   if ! curl --output /dev/null --silent --head --fail "$URL"; then
     error "CLI download error. Bad network or version."
