@@ -9,12 +9,34 @@
 #   Tyler Jewell - Initial Implementation
 #
 
+# Move this into a dedicated function that is only called when the variable is absolutely
+# needed. This will speed performance for methods that do not need this value set.
+init_host_arch() {
+  GLOBAL_HOST_ARCH=${GLOBAL_HOST_ARCH:=$DEFAULT_GLOBAL_HOST_ARCH}
+}
+
+init_name_map() {
+  GLOBAL_NAME_MAP=${GLOBAL_NAME_MAP:=$(docker info | grep "Name:" | cut -d" " -f2)}
+}
+
+init_host_ip() {
+  GLOBAL_HOST_IP=${GLOBAL_HOST_IP:=$(docker run --net host --rm codenvy/che-ip:nightly)}
+}
+
+init_uname() {
+  GLOBAL_UNAME=${GLOBAL_UNAME:=$(docker run --rm alpine sh -c "uname -r")}
+#  GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
+}
+
 cli_init() {
-  GLOBAL_NAME_MAP=$(docker info | grep "Name:" | cut -d" " -f2)
-  GLOBAL_HOST_ARCH=$(docker version --format {{.Client}} | cut -d" " -f5)
-  GLOBAL_HOST_IP=$(docker run --net host --rm codenvy/che-ip:nightly)
-  GLOBAL_UNAME=$(docker run --rm alpine sh -c "uname -r")
-  GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
+#  GLOBAL_NAME_MAP=$(docker info | grep "Name:" | cut -d" " -f2)
+#  GLOBAL_HOST_ARCH=$(docker version --format {{.Client}} | cut -d" " -f5)
+#  GLOBAL_HOST_IP=$(docker run --net host --rm codenvy/che-ip:nightly)
+#  GLOBAL_UNAME=$(docker run --rm alpine sh -c "uname -r")
+#  GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
+
+  # Odd - bash fails if this is embedded, so define it globally once
+  DEFAULT_GLOBAL_HOST_ARCH=$(docker version --format {{.Client}} | cut -d" " -f5)
 
   DEFAULT_CODENVY_VERSION="nightly"
   DEFAULT_CODENVY_UTILITY_VERSION="nightly"
@@ -22,6 +44,8 @@ cli_init() {
   DEFAULT_CODENVY_DEVELOPMENT_MODE="off"
   DEFAULT_CODENVY_DEVELOPMENT_REPO=$(get_mount_path $PWD)
   DEFAULT_CODENVY_DEVELOPMENT_TOMCAT="assembly/onpremises-ide-packaging-tomcat-codenvy-allinone/target/onpremises-ide-packaging-tomcat-codenvy-allinone"
+
+  init_host_ip
   DEFAULT_CODENVY_HOST=$GLOBAL_HOST_IP
   DEFAULT_CODENVY_CONFIG=$(get_mount_path $PWD)/config
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
@@ -88,41 +112,6 @@ cli_init() {
       warning "Boot2docker for Windows - CODENVY_CONFIG set to $CODENVY_CONFIG"
     fi
   fi
-
-  USAGE="
-Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
-    help                                 This message
-    version                              Installed version and upgrade paths
-    init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration
-    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
-    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
-    restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
-    destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
-    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
-    config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
-    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster
-    remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
-    upgrade                              Upgrades Codenvy from one version to another with data migrations and bakcups
-    download [--pull|--force|--offline]  Pulls Docker images for CODENVY_VERSION, or if installed, $CODENVY_VERSION_FILE
-    backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
-    restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
-    offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
-    info [ --all                         Run all debugging tests
-           --debug                       Displays system information
-           --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
-
-Variables:
-    CODENVY_VERSION                       Version to run
-    CODENVY_CONFIG                        Where the Codenvy config, CLI and variables are located
-    CODENVY_INSTANCE                      Where ${CHE_MINI_PRODUCT_NAME} data, database, logs, are saved
-    CODENVY_PORT                          External port of ${CHE_MINI_PRODUCT_NAME} server
-    CODENVY_PROPERTY_<>                   One time use properties passed to ${CHE_MINI_PRODUCT_NAME} - see docs
-    CODENVY_CLI_VERSION                   Version of CLI to run
-    CODENVY_UTILITY_VERSION               Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
-    CODENVY_DEVELOPMENT_MODE              If 'on', then has images mount host source folders instead of embedded files
-    CODENVY_DEVELOPMENT_REPO              Location of host git repository that contains source code to be mounted
-    CODENVY_BACKUP_FOLDER                 Location where backups files of installation are stored. Default = pwd
-"
 }
 
 ### Should we load profile before we parse the command line?
@@ -237,11 +226,6 @@ get_mount_path() {
   echo $CLEAN_PATH
 }
 
-usage () {
-  debug $FUNCNAME
-  printf "%s" "${USAGE}"
-}
-
 get_full_path() {
   debug $FUNCNAME
   # create full directory path
@@ -312,6 +296,7 @@ get_docker_host_ip() {
 
 has_docker_for_windows_client(){
   debug $FUNCNAME
+  init_host_arch
   if [ "${GLOBAL_HOST_ARCH}" = "windows" ]; then
     return 0
   else
@@ -334,6 +319,7 @@ get_docker_install_type() {
 
 is_boot2docker() {
   debug $FUNCNAME
+  init_uname
   if echo "$GLOBAL_UNAME" | grep -q "boot2docker"; then
     return 0
   else
@@ -370,6 +356,7 @@ is_native() {
 
 is_moby_vm() {
   debug $FUNCNAME
+  init_name_map
   if echo "$GLOBAL_NAME_MAP" | grep -q "moby"; then
     return 0
   else
@@ -379,6 +366,7 @@ is_moby_vm() {
 
 has_docker_for_windows_client(){
   debug $FUNCNAME
+  init_host_arch
   if [ "${GLOBAL_HOST_ARCH}" = "windows" ]; then
     return 0
   else
@@ -1237,7 +1225,6 @@ cmd_debug() {
 #  info "CLI DEFAULT PROFILE       = $(has_default_profile && echo $(get_default_profile) || echo "not set")"
   info "CLI_VERSION               = ${CHE_CLI_VERSION}"
   info "DOCKER_INSTALL_TYPE       = $(get_docker_install_type)"
-  info "DOCKER_HOST_IP            = ${GLOBAL_GET_DOCKER_HOST_IP}"
   info "IS_NATIVE                 = $(is_native && echo \"YES\" || echo \"NO\")"
   info "IS_WINDOWS                = $(has_docker_for_windows_client && echo \"YES\" || echo \"NO\")"
   info "IS_DOCKER_FOR_WINDOWS     = $(is_docker_for_windows && echo \"YES\" || echo \"NO\")"

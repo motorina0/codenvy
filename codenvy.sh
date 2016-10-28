@@ -39,6 +39,10 @@ init_logging() {
   DEFAULT_CHE_CLI_WARN="true"
   CHE_CLI_WARN=${CHE_CLI_WARN:-${DEFAULT_CHE_CLI_WARN}}
 
+  # Activates console output
+  DEFAULT_CHE_CLI_LOG="true"
+  CHE_CLI_LOG=${CHE_CLI_LOG:-${DEFAULT_CHE_CLI_LOG}}
+
   # Initialize CLI folder
   CLI_DIR=~/."${CHE_MINI_PRODUCT_NAME}"/cli
   test -d "${CLI_DIR}" || mkdir -p "${CLI_DIR}"
@@ -56,13 +60,54 @@ init_logging() {
   fi
   # Log date of CLI execution
   log "$(date)"
+
+  USAGE="
+Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
+    help                                 This message
+    version                              Installed version and upgrade paths
+    init [--pull|--force|--offline]      Initializes a directory with a ${CHE_MINI_PRODUCT_NAME} configuration
+    start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
+    stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
+    restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
+    destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
+    config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
+    add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster
+    remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
+    upgrade                              Upgrades Codenvy from one version to another with migrations and backups
+    download [--pull|--force|--offline]  Pulls Docker images for the current Codenvy version
+    backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
+    restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
+    offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
+    info [ --all                         Run all debugging tests
+           --debug                       Displays system information
+           --network ]                   Test connectivity between ${CHE_MINI_PRODUCT_NAME} sub-systems
+
+Variables:
+    CODENVY_VERSION                       Version to install for 'codenvy init'
+    CODENVY_CONFIG                        Where the Codenvy config, CLI and variables are located
+    CODENVY_INSTANCE                      Where ${CHE_MINI_PRODUCT_NAME} data, database, logs, are saved
+    CODENVY_DEVELOPMENT_MODE              If 'on', then mounts host source folders into Docker images
+    CODENVY_DEVELOPMENT_REPO              Location of host git repository that contains source code to be mounted
+    CODENVY_CLI_VERSION                   Version of CLI to run
+    CODENVY_UTILITY_VERSION               Version of ${CHE_MINI_PRODUCT_NAME} launcher, mount, dev, action to run
+    CODENVY_BACKUP_FOLDER                 Location where backups files of installation are stored. Default = pwd
+"
 }
 
 # Sends arguments as a text to CLI log file
 # Usage:
 #   log <argument> [other arguments]
 log() {
-  echo "$@" >> "${LOGS}"
+  if is_log; then
+    echo "$@" >> "${LOGS}"
+  fi 
+}
+
+usage () {
+  debug $FUNCNAME
+  printf "%s" "${USAGE}"
+  return 1;
 }
 
 warning() {
@@ -142,6 +187,14 @@ cli_eval() {
 cli_silent_eval() {
   log "$@"
   eval "$@" >> "${LOGS}" 2>&1
+}
+
+is_log() {
+  if [ "${CHE_CLI_LOG}" = "true" ]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 is_warning() {
@@ -319,6 +372,11 @@ get_script_source_dir() {
 
 init() {
   init_logging
+
+  if [[ $# == 0 ]]; then
+    usage;
+  fi
+
   check_docker
   check_docker_compose
   grab_offline_images
@@ -342,6 +400,7 @@ set -u
 init "$@"
 
 # Begin product-specific CLI calls
+info "cli" "Loading cli..."
 cli_init "$@"
 cli_parse "$@"
 cli_cli "$@"
