@@ -337,6 +337,7 @@ The data in the LDAP cache is considered to be consistent as long as the synchro
 - If synchronization candidate is missing from LDAP cache, an appropriate User and Profile will be created.
 - If synchronization candidate is present in LDAP cache, the User and Profile will be refreshed with data from LDAP storage(replacing the entity in the LDAP cache).
 - If LDAP cache contains synchronized users who are missing from LDAP storage those users will be removed by the next synchronization iteration.
+
 There are 2 possible strategies for synchronization:
 
 1. Synchronization period is configured and synchronization is periodical.
@@ -397,7 +398,15 @@ If you need to backup your Postgres data, run the following command:
 ## Scaling
 Codenvy workspaces can run on different physical nodes that are part of a Codenvy cluster managed by Docker Swarm. This is an essential part of managing large development teams, as workspaces are both RAM and CPU intensive operations, and developers do not like to share their computing power when they have a compilation that they want done. So you will want to allocate enough physical nodes to smartly handle the right number of concurrently *running* workspaces, each of which will have a RAM block.
 
-TODO: https://codenvy.readme.io/v5.0/docs/installation#sizing
+#### Minimum Installation
+The Codenvy services running on a server require 2 GB storage and 4 GB RAM for their internal overhead. This applies to both single server, single server with multiple machine servers, and distributed server implementations. The RAM, CPU and storage resources to support your users are additive.
+
+#### Concurrent Workspaces
+You need to have machine RAM to support the number of concurrent workspaces open by users within your system. A single user may have multiple workspaces open, but generally use a single workspace. The default workspace size is 1GB RAM, but this can be changed by users. Also, within a single workspace, a user is able to launch additional environments for their projects, which consume additional RAM, though this is uncommon.
+
+For example, at Codenvy, we regularly have 75 concurrently running workspaces, each sized at 16 GB RAM, for a total expectation of 1200 GB of RAM. Our machine nodes have 128 GB RAM per node and we routinely run 10-14 machine nodes to support everyone.
+
+Note that compilation events are usually CPU-heavy and most compilation activities initiated by developers are sent to a single CPU. With quad-core machine nodes, we end up with capacity to support 40-52 concurrent builds in workspaces so that there is no thrashing or blocking. Your team may need more.
 
 You can add as many physical nodes inot a Codenvy cluster, and Codenvy will schedule workspaces for placement on those nodes. You can use the `codenvy add-node` command which generates a utility for you to run on each node that should be added to the cluster. You can also run `codenvy remove-node` to automate the removal of the node from the cluster and the movement of any remaining workspaces onto another node. 
 
