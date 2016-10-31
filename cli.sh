@@ -695,6 +695,12 @@ generate_configuration_with_puppet() {
                                 /etc/puppet/manifests/codenvy.pp --show_diff "$@"
 }
 
+# return date in format which can be used as a unique file or dir name
+# example 2016-10-31-1477931458
+get_current_date() {
+    date +'%Y-%m-%d-%s'
+}
+
 ###########################################################################
 ### END HELPER FUNCTIONS
 ###
@@ -948,9 +954,10 @@ cmd_destroy() {
 
   cmd_stop
   info "destroy" "Deleting instance and config"
-  log "docker run --rm -v "${CODENVY_CONFIG}":/codenvy-config -v "${CODENVY_INSTANCE}":/codenvy-instance alpine rm -rf /root/codenvy-config/* /root/codenvy-instance/*"
+  log "docker run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
   docker run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
-  log ""${CODENVY_CONFIG}" "${CODENVY_INSTANCE}""
+  log "rm -rf \"${CODENVY_CONFIG}\" >> \"${LOGS}\""
+  log "rm -rf \"${CODENVY_INSTANCE}\" >> \"${LOGS}\""
   rm -rf "${CODENVY_CONFIG}"
   rm -rf "${CODENVY_INSTANCE}"
   if has_docker_for_windows_client; then
@@ -1039,6 +1046,14 @@ cmd_version() {
 cmd_backup() {
   debug $FUNCNAME
 
+  # possibility to skip codenvy projects backup
+  SKIP_BACKUP_CODENVY_DATA=${1:-"--no-skip-codenvy-data"}
+  if [[ "${SKIP_BACKUP_CODENVY_DATA}" == "--skip-codenvy-data" ]]; then
+    TAR_EXTRA_EXCLUDE="--exclude=data/codenvy"
+  else
+    TAR_EXTRA_EXCLUDE=""
+  fi
+
   if [[ ! -d "${CODENVY_CONFIG}" ]] || \
      [[ ! -d "${CODENVY_INSTANCE}" ]]; then
     error "Cannot find existing CODENVY_CONFIG or CODENVY_INSTANCE. Aborting."
@@ -1050,25 +1065,32 @@ cmd_backup() {
     return;
   fi
 
-  ## TODO: - have backups get time & day for rotational purposes
-  if [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" ]] || \
-     [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" ]]; then
-
-    WARNING="Previous backup will be overwritten."
-    if ! confirm_operation "${WARNING}" "$@"; then
-      return;
-    fi
-  fi
-
   if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" >> "${LOGS}" 2>&1; then
     error "$CHE_MINI_PRODUCT_NAME is running. Stop before performing a backup. Aborting."
     return;
   fi
 
+  # check if backups already exist and if so we move it with time stamp in name
+  if [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" ]]; then
+    mv "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" \
+        "${CODENVY_BACKUP_FOLDER}/moved-$(get_current_date)-${CODENVY_CONFIG_BACKUP_FILE_NAME}"
+  fi
+  if [[ -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" ]]; then
+    mv "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
+        "${CODENVY_BACKUP_FOLDER}/moved-$(get_current_date)-${CODENVY_INSTANCE_BACKUP_FILE_NAME}"
+  fi
+
   info "backup" "Saving configuration..."
-  tar -C "${CODENVY_CONFIG}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" .
+  docker run --rm \
+    -v "${CODENVY_CONFIG}":/root/codenvy-config \
+    -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
+    alpine sh -c "tar czf /root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME} -C /root/codenvy-config ."
+
   info "backup" "Saving instance data..."
-  tar -C "${CODENVY_INSTANCE}" -cf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" .
+  docker run --rm \
+    -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+    -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
+    alpine sh -c "tar czf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance . --exclude=logs ${TAR_EXTRA_EXCLUDE}"
 }
 
 cmd_restore() {
@@ -1088,14 +1110,33 @@ cmd_restore() {
     return;
   fi
 
-  info "restore" "Recovering configuration..."
-  rm -rf "${CODENVY_INSTANCE}"
+  if [[ ! -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}" ]] || \
+     [[ ! -f "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" ]]; then
+    error "Backup files not found. To do restore please do backup first."
+    return;
+  fi
+
+  # remove config and instance folders
+  log "docker run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
+  docker run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
+  log "rm -rf \"${CODENVY_CONFIG}\" >> \"${LOGS}\""
+  log "rm -rf \"${CODENVY_INSTANCE}\" >> \"${LOGS}\""
   rm -rf "${CODENVY_CONFIG}"
+  rm -rf "${CODENVY_INSTANCE}"
+
+  info "restore" "Recovering configuration..."
   mkdir -p "${CODENVY_CONFIG}"
-  tar -C "${CODENVY_CONFIG}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}"
+  docker run --rm \
+    -v "${CODENVY_CONFIG}":/root/codenvy-config \
+    -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME}" \
+    alpine sh -c "tar xf /root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME} -C /root/codenvy-config"
+
   info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
-  tar -C "${CODENVY_INSTANCE}" -xf "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}"
+  docker run --rm \
+    -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+    -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
+    alpine sh -c "tar xf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance"
 }
 
 cmd_offline() {
