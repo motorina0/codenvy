@@ -70,7 +70,6 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
 - [Monitoring](#Monitoring)
 - [CLI Reference](#cli_reference)
 - [API]()
-- [Architecture](#architecture)
 
 ## Beta
 This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016. Items to be added:
