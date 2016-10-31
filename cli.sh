@@ -55,22 +55,20 @@ cli_init() {
   CODENVY_UTILITY_VERSION=${CODENVY_UTILITY_VERSION:-${DEFAULT_CODENVY_UTILITY_VERSION}}
   CODENVY_CLI_ACTION=${CODENVY_CLI_ACTION:-${DEFAULT_CODENVY_CLI_ACTION}}
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
-  CODENVY_DEVELOPMENT_REPO=${CODENVY_DEVELOPMENT_REPO:-${DEFAULT_CODENVY_DEVELOPMENT_REPO}}
-  CODENVY_DEVELOPMENT_TOMCAT=${CODENVY_DEVELOPMENT_TOMCAT:-${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}}
+  CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${CODENVY_DEVELOPMENT_REPO:-${DEFAULT_CODENVY_DEVELOPMENT_REPO}})
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
-    CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${CODENVY_DEVELOPMENT_REPO})
-    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]]; then
+    if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || [[ ! -d "${CODENVY_DEVELOPMENT_REPO}/assembly" ]]; then
       info "cli" "Development mode is on and could not find valid repo or packaged assembly"
-      info "cli" "Set CODENVY_DEVELOPMENT_REPO to the root of your git clone repo"
+      info "cli" "Please launch codenvy.sh from the codenvy repo or set CODENVY_DEVELOPMENT_REPO to the root of your git clone repo"
       return 2
     fi
-    if [[ ! -d $(echo "${CODENVY_DEVELOPMENT_REPO}"/"${CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
+    if [[ ! -d $(echo "${CODENVY_DEVELOPMENT_REPO}"/"${DEFAULT_CODENVY_DEVELOPMENT_TOMCAT}"-*/) ]]; then
       info "cli" "Development mode is on and could not find valid Tomcat assembly"
       info "cli" "Have you built /assembly/onpremises-ide-packaging-tomcat-codenvy-allinone yet?"
       return 2
     else
-      CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $CODENVY_DEVELOPMENT_REPO/$CODENVY_DEVELOPMENT_TOMCAT-*/))
+      CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
     fi
   fi
 
