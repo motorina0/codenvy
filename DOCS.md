@@ -53,7 +53,7 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
   - [Projects]()
   - [Private Docker Registries]() 
   - [Mirroring Docker Hub]()
-  - [Going Direct to Puppet]
+  - [Going Direct to Puppet]()
 - [Runbook]()
 - [Logs and User Data](#logs-and-user-data)
 - [Upgrading](#Updates)
