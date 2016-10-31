@@ -69,15 +69,15 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     start [--pull|--force|--offline]     Starts ${CHE_MINI_PRODUCT_NAME} services
     stop                                 Stops ${CHE_MINI_PRODUCT_NAME} services
     restart [--pull|--force]             Restart ${CHE_MINI_PRODUCT_NAME} services
-    destroy                              Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
-    rmi [--force]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
+    destroy [--quiet]                    Stops services, and deletes ${CHE_MINI_PRODUCT_NAME} instance data
+    rmi [--quiet]                        Removes the Docker images for CODENVY_VERSION, forcing a repull
     config                               Generates a ${CHE_MINI_PRODUCT_NAME} config from vars; run on any start / restart
     add-node                             Adds a physical node to serve workspaces intto the ${CHE_MINI_PRODUCT_NAME} cluster
     remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
     upgrade                              Upgrades Codenvy from one version to another with migrations and backups
     download [--pull|--force|--offline]  Pulls Docker images for the current Codenvy version
-    backup                               Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
-    restore                              Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
+    backup [--quiet]                     Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
+    restore [--quiet]                    Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
     offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
     info [ --all                         Run all debugging tests
            --debug                       Displays system information

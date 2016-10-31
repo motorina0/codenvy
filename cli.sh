@@ -88,6 +88,7 @@ cli_init() {
   CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
   CODENVY_CONFIG_BACKUP_FILE_NAME="codenvy_config_backup.tar"
   CODENVY_INSTANCE_BACKUP_FILE_NAME="codenvy_instance_backup.tar"
+  CHE_GLOBAL_VERSION_IMAGE="codenvy/version"
 
   # For some situations, Docker requires a path for volume mount which is posix-based.
   # In other cases, the same file needs to be in windows format
@@ -416,7 +417,7 @@ update_image() {
     shift
     info "download" "Removing image $1"
     log "docker rmi -f $1 >> \"${LOGS}\""
-    docker rmi -f $1 >> "${LOGS}"
+    docker rmi -f $1 >> "${LOGS}" || true
   fi
 
   if [ "${1}" == "--pull" ]; then
@@ -425,60 +426,8 @@ update_image() {
 
   info "download" "Pulling image $1"
   text "\n"
-  docker pull $1
+  docker pull $1 >> "${LOGS}" 2>&1 || true
   text "\n"
-}
-
-has_che_properties() {
-  debug $FUNCNAME
-  PROPERTIES=$(env | grep CHE_PROPERTY_)
-
-  if [ "$PROPERTIES" = "" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
-
-generate_temporary_che_properties_file() {
-  debug $FUNCNAME
-  if has_che_properties; then
-    log "test -d ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf || mkdir -p ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf"
-    test -d ~/."${CHE_MINI_PRODUCT_NAME}"/conf || mkdir -p ~/."${CHE_MINI_PRODUCT_NAME}"/conf
-    log "touch ~/.\"${CHE_MINI_PRODUCT_NAME}\"/conf/che.properties"
-    touch ~/."${CHE_MINI_PRODUCT_NAME}"/conf/che.properties
-
-    # Get list of properties
-    PROPERTIES_ARRAY=($(env | grep CHE_PROPERTY_))
-    for PROPERTY in "${PROPERTIES_ARRAY[@]}"
-    do
-      # CHE_PROPERTY_NAME=value ==> NAME=value
-      PROPERTY_WITHOUT_PREFIX=${PROPERTY#CHE_PROPERTY_}
-
-      # NAME=value ==> separate name / value into different variables
-      PROPERTY_NAME=$(echo ${PROPERTY_WITHOUT_PREFIX} | cut -f1 -d=)
-      PROPERTY_VALUE=$(echo ${PROPERTY_WITHOUT_PREFIX} | cut -f2 -d=)
-
-      # Replace "_" in names to periods
-      CONVERTED_PROPERTY_NAME=$(echo "${PROPERTY_NAME}" | tr _ .)
-
-      # Replace ".." in names to "_"
-      SUPER_CONVERTED_PROPERTY_NAME="${CONVERTED_PROPERTY_NAME//../_}"
-
-      echo "${SUPER_CONVERTED_PROPERTY_NAME}=${PROPERTY_VALUE}" >> ~/."${CHE_MINI_PRODUCT_NAME}"/conf/che.properties
-    done
-  fi
-}
-
-contains() {
-  string="$1"
-  substring="$2"
-  if test "${string#*$substring}" != "$string"
-  then
-    return 0    # $substring is in $string
-  else
-    return 1    # $substring is not in $string
-  fi
 }
 
 port_open(){
@@ -600,10 +549,10 @@ get_version_registry() {
   info "cli" "Downloading version registry..."
 
   ### Remove these comments once in production
-  log "docker pull codenvy/version >> \"${LOGS}\" 2>&1 || true"
-  docker pull codenvy/version >> "${LOGS}" 2>&1 || true
-  log "docker_exec run --rm -v \"${CODENVY_MANIFEST_DIR}\":/copy codenvy/version"
-  docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy codenvy/version
+  log "docker pull $CHE_GLOBAL_VERSION_IMAGE >> \"${LOGS}\" 2>&1 || true"
+  docker pull $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
+  log "docker_exec run --rm -v \"${CODENVY_MANIFEST_DIR}\":/copy $CHE_GLOBAL_VERSION_IMAGE"
+  docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy $CHE_GLOBAL_VERSION_IMAGE
 }
 
 list_versions(){
@@ -704,12 +653,11 @@ get_installed_installdate() {
 confirm_operation() {
   debug $FUNCNAME
 
-  # Warn user with passed message
-  info "${1}"
-
   FORCE_OPERATION=${2:-"--no-force"}
 
-  if [ ! "${FORCE_OPERATION}" == "--force" ]; then
+  if [ ! "${FORCE_OPERATION}" == "--quiet" ]; then
+    # Warn user with passed message
+    info "${1}"
     text "\n"
     read -p "      Are you sure? [N/y] " -n 1 -r
     text "\n\n"
@@ -724,7 +672,7 @@ confirm_operation() {
 # Runs puppet image to generate codenvy configuration
 generate_configuration_with_puppet() {
   debug $FUNCNAME
-  info "config" "Generating codenvy configuration..."
+  info "config" "Generating $CHE_MINI_PRODUCT_NAME configuration..."
   # Note - bug in docker requires relative path for env, not absolute
   log "docker_exec run -it --rm \
                   --env-file=\"${REFERENCE_ENVIRONMENT_FILE}\" \
@@ -809,11 +757,10 @@ cmd_init() {
                        $IMAGE_INIT #> /dev/null 2>&1
   else
     # docker pull codenvy/bootstrap with current directory as volume mount.
-    docker_exec run --rm -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT #> /dev/null 2>&1
+    docker_exec run --rm -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT 
   fi
 
   # After initialization, add codenvy.env with self-discovery.
-  log "touch \"${REFERENCE_ENVIRONMENT_FILE}\""
   sed -i'.bak' "s|#CODENVY_HOST=.*|CODENVY_HOST=${CODENVY_HOST}|" "${REFERENCE_ENVIRONMENT_FILE}"
   info "init" "  CODENVY_HOST=${CODENVY_HOST}"
   sed -i'.bak' "s|#CODENVY_VERSION=.*|CODENVY_VERSION=${CODENVY_VERSION}|" "${REFERENCE_ENVIRONMENT_FILE}"
@@ -892,7 +839,7 @@ cmd_config() {
     CODENVY_ENVFILE_POSTGRES=$(convert_posix_to_windows $(echo \
                                    "${CODENVY_INSTANCE}/config/postgres/postgres.env"))
     CODENVY_ENVFILE_CODENVY=$(convert_posix_to_windows $(echo \
-                                   "${CODENVY_INSTANCE}/config/codenvy/codenvy.env"))
+                                   "${CODENVY_INSTANCE}/config/codenvy/$CHE_MINI_PRODUCT_NAME.env"))
     sed "s|^.*registry\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_REGISTRY}\'|" -i "${REFERENCE_COMPOSE_FILE}"
     sed "s|^.*postgres\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_POSTGRES}\'|" -i "${REFERENCE_COMPOSE_FILE}"
     sed "s|^.*codenvy\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_CODENVY}\'|" -i "${REFERENCE_COMPOSE_FILE}"
@@ -919,7 +866,7 @@ cmd_start() {
     CURRENT_CODENVY_SERVER_CONTAINER_ID=$(get_server_container_id $CODENVY_SERVER_CONTAINER_NAME)
     if container_is_running ${CURRENT_CODENVY_SERVER_CONTAINER_ID} && \
        server_is_booted ${CURRENT_CODENVY_SERVER_CONTAINER_ID}; then
-       info "start" "Codenvy is already running"
+       info "start" "$CHE_MINI_PRODUCT_NAME is already running"
        info "start" "Server logs at \"docker logs -f ${CODENVY_SERVER_CONTAINER_NAME}\""
        info "start" "Ver: $(get_installed_version)"
        info "start" "Use: http://${CODENVY_HOST}"
@@ -941,7 +888,7 @@ cmd_start() {
   text   "         port 443 (https):     $(port_open 443 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   text   "         port 5000 (registry): $(port_open 5000 && echo "${GREEN}[AVAILABLE]${NC}" || echo "${RED}[ALREADY IN USE]${NC}") \n"
   if ! $(port_open 80) || ! $(port_open 443) || ! $(port_open 5000); then
-    error "Ports required to run codenvy are used by another program. Aborting..."
+    error "Ports required to run $CHE_MINI_PRODUCT_NAME are used by another program. Aborting..."
     return 1;
   fi
   text "\n"
@@ -949,8 +896,8 @@ cmd_start() {
   # Start Codenvy
   # Note bug in docker requires relative path, not absolute path to compose file
   info "start" "Starting containers..."
-  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy up -d >> \"${LOGS}\" 2>&1"
-  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy up -d >> "${LOGS}" 2>&1
+  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=$CHE_MINI_PRODUCT_NAME up -d >> \"${LOGS}\" 2>&1"
+  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=$CHE_MINI_PRODUCT_NAME up -d >> "${LOGS}" 2>&1
   check_if_booted
 }
 
@@ -963,12 +910,11 @@ cmd_stop() {
   fi
 
   info "stop" "Stopping containers..."
-  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy stop >> \"${LOGS}\" 2>&1 || true"
-  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy stop >> "${LOGS}" 2>&1 || true
-  info "stop" "Removing containers"
-  log "yes | docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy rm >> \"${LOGS}\" 2>&1 || true"
-  yes | docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy rm >> "${LOGS}" 2>&1 || true
-#  docker rm $(docker ps -aq --filter name=${DOCKER_CONTAINER_NAME_PREFIX}) >> "${LOGS}" 2>&1 || true
+  log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=$CHE_MINI_PRODUCT_NAME stop >> \"${LOGS}\" 2>&1 || true"
+  docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=$CHE_MINI_PRODUCT_NAME stop >> "${LOGS}" 2>&1 || true
+  info "stop" "Removing containers..."
+  log "yes | docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=$CHE_MINI_PRODUCT_NAME rm >> \"${LOGS}\" 2>&1 || true"
+  yes | docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=$CHE_MINI_PRODUCT_NAME rm >> "${LOGS}" 2>&1 || true
 }
 
 cmd_restart() {
@@ -1035,8 +981,8 @@ cmd_rmi() {
   done
 
   # This is Codenvy's singleton instance with the version registry
-  info "rmi" "Removing codenvy/version"
-  docker rmi -f codenvy/version >> "${LOGS}" 2>&1 || true
+  info "rmi" "Removing $CHE_GLOBAL_VERSION_IMAGE"
+  docker rmi -f $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
 }
 
 cmd_upgrade() {
@@ -1064,7 +1010,9 @@ cmd_version() {
   debug $FUNCNAME
 
   error "!!! this information is experimental - upgrade not yet available !!!"
-  text "Codenvy:\n"
+  get_version_registry
+  echo ""
+  text "$CHE_PRODUCT_NAME:\n"
   text "  Version:      %s\n" $(get_installed_version)
   text "  Installed:    %s\n" $(get_installed_installdate)
   text "  CLI version:  $CHE_CLI_VERSION\n"
@@ -1111,7 +1059,7 @@ cmd_backup() {
   fi
 
   if get_server_container_id "${CODENVY_SERVER_CONTAINER_NAME}" >> "${LOGS}" 2>&1; then
-    error "Codenvy is running. Stop before performing a backup. Aborting."
+    error "$CHE_MINI_PRODUCT_NAME is running. Stop before performing a backup. Aborting."
     return;
   fi
 
@@ -1175,7 +1123,7 @@ cmd_offline() {
   done
 
   # This is Codenvy's singleton instance with the version registry
-  docker save codenvy/version > "${CODENVY_OFFLINE_FOLDER}"/codenvy_version.tar
+  docker save $CHE_GLOBAL_VERSION_IMAGE > "${CODENVY_OFFLINE_FOLDER}"/codenvy_version.tar
   info "offline" "Images saved as tars in $CODENVY_OFFLINE_FOLDER"
 }
 
