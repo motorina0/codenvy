@@ -56,6 +56,7 @@ cli_init() {
   CODENVY_CLI_ACTION=${CODENVY_CLI_ACTION:-${DEFAULT_CODENVY_CLI_ACTION}}
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${CODENVY_DEVELOPMENT_REPO:-${DEFAULT_CODENVY_DEVELOPMENT_REPO}})
+  CODENVY_DEVELOPMENT_TOMCAT="${CODENVY_INSTANCE}/development-tomcat"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || [[ ! -d "${CODENVY_DEVELOPMENT_REPO}/assembly" ]]; then
@@ -67,8 +68,6 @@ cli_init() {
       info "cli" "Development mode is on and could not find valid Tomcat assembly"
       info "cli" "Have you built /assembly/onpremises-ide-packaging-tomcat-codenvy-allinone yet?"
       return 2
-    else
-      CODENVY_DEVELOPMENT_TOMCAT=$(get_mount_path $(echo $CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))
     fi
   fi
 
@@ -756,15 +755,14 @@ cmd_init() {
     return 1;
   fi
 
+  # in development mode we use init files from repo otherwise we use it from docker image
   if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
-    # docker pull codenvy/bootstrap with current directory as volume mount.
     docker_exec run --rm \
                     -v "${CODENVY_CONFIG}":/copy \
                     -v "${CODENVY_DEVELOPMENT_REPO}":/files \
-                       $IMAGE_INIT #> /dev/null 2>&1
+                       $IMAGE_INIT
   else
-    # docker pull codenvy/bootstrap with current directory as volume mount.
-    docker_exec run --rm -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT 
+    docker_exec run --rm -v "${CODENVY_CONFIG}":/copy $IMAGE_INIT
   fi
 
   # After initialization, add codenvy.env with self-discovery.
@@ -821,21 +819,31 @@ cmd_config() {
     get_image_manifest $CODENVY_VERSION
   fi
 
-  # if dev mode is on, pick configuration sources from repo.
-  # please note that in production mode update of configuration sources must be only on update.
+  # Development mode
   if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
-    # docker pull codenvy/bootstrap with current directory as volume mount.
+    # if dev mode is on, pick configuration sources from repo.
+    # please note that in production mode update of configuration sources must be only on update.
     docker_exec run --rm \
                     -v "${CODENVY_CONFIG}":/copy \
                     -v "${CODENVY_DEVELOPMENT_REPO}":/files \
                        $IMAGE_INIT
-  fi
 
-  # print puppet output logs to console if dev mode is on
-  if [ "${CODENVY_DEVELOPMENT_MODE}" = "on" ]; then
-     generate_configuration_with_puppet
+    # in development mode to avoid permissions issues we copy tomcat assembly to ${CODENVY_INSTANCE}
+    # if codenvy development tomcat exist we remove it
+    if [[ -d "${CODENVY_INSTANCE}/development-tomcat" ]]; then
+        log "docker run --rm -v \"${CODENVY_INSTANCE}/development-tomcat\":/root/development-tomcat alpine sh -c \"rm -rf /root/development-tomcat/*\""
+        docker run --rm -v "${CODENVY_INSTANCE}/development-tomcat":/root/development-tomcat alpine sh -c "rm -rf /root/development-tomcat/*"
+        log "rm -rf \"${CODENVY_INSTANCE}/development-tomcat\" >> \"${LOGS}\""
+        rm -rf "${CODENVY_INSTANCE}/development-tomcat"
+    fi
+    # copy codenvy development tomcat to ${CODENVY_INSTANCE} folder
+    cp -r "$(get_mount_path $(echo $CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))" \
+        "${CODENVY_INSTANCE}/development-tomcat"
+
+    # generate configs and print puppet output logs to console if dev mode is on
+    generate_configuration_with_puppet
   else
-     generate_configuration_with_puppet >> "${LOGS}"
+    generate_configuration_with_puppet >> "${LOGS}"
   fi
 
   # Replace certain environment file lines with wind
@@ -928,20 +936,9 @@ cmd_restart() {
   debug $FUNCNAME
 
   FORCE_UPDATE=${1:-"--no-force"}
-  if [[ "${FORCE_UPDATE}" == "--force" ]] ||\
-     [[ "${FORCE_UPDATE}" == "--pull" ]]; then
-    info "restart" "Stopping and removing containers..."
+    info "restart" "Restarting..."
     cmd_stop
-    info "restart" "Initiating clean start"
     cmd_start ${FORCE_UPDATE}
-  else
-    info "restart" "Generating updated config..."
-    cmd_config
-    info "restart" "Restarting services..."
-    log "docker-compose --file=\"${REFERENCE_COMPOSE_FILE}\" -p=codenvy restart >> \"${LOGS}\" 2>&1"
-    docker-compose --file="${REFERENCE_COMPOSE_FILE}" -p=codenvy restart >> "${LOGS}" 2>&1 || true
-    check_if_booted
-  fi
 }
 
 cmd_destroy() {
