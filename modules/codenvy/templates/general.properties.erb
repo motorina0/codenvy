@@ -3,7 +3,7 @@
 # PLEASE DON'T MODIFY BY HAND
 # ###################################
 
-api.endpoint=<%= scope.lookupvar('codenvy::host_protocol') %>://<%= scope.lookupvar('codenvy::host_url') %>/api
+che.api=<%= scope.lookupvar('codenvy::host_protocol') %>://<%= scope.lookupvar('codenvy::host_url') %>/api
 
 che.user.workspaces.storage=/opt/codenvy-data/fs
 vfs.local.fs_index_root_dir=${java.io.tmpdir}/fs-index
@@ -26,7 +26,7 @@ schedule.core_pool_size=10
 # GIT
 git.server.uri.prefix=git
 
-user.self.creation.allowed=<%= scope.lookupvar('codenvy::user_self_creation_allowed') %>
+che.auth.user_self_creation=<%= scope.lookupvar('codenvy::user_self_creation_allowed') %>
 
 # Limits
 limits.user.workspaces.count=<%= scope.lookupvar('codenvy::limits_user_workspaces_count') %>
@@ -37,19 +37,19 @@ limits.workspace.env.ram=<%= scope.lookupvar('codenvy::limits_workspace_env_ram'
 limits.workspace.start.throughput=5
 
 # workspace proxy configuration
-http.proxy=<%= scope.lookupvar('codenvy::http_proxy_for_codenvy_workspaces') %>
-https.proxy=<%= scope.lookupvar('codenvy::https_proxy_for_codenvy_workspaces') %>
-no_proxy=<%= scope.lookupvar('codenvy::no_proxy_for_codenvy_workspaces') %>
+che.workspace.http_proxy=<%= scope.lookupvar('codenvy::http_proxy_for_codenvy_workspaces') %>
+che.workspace.https_proxy=<%= scope.lookupvar('codenvy::https_proxy_for_codenvy_workspaces') %>
+che.workspace.no_proxy=<%= scope.lookupvar('codenvy::no_proxy_for_codenvy_workspaces') %>
 
 # During the stop of the workspace automatically creates a snapshot if the value is {true},
 # otherwise just stops the workspace.
-workspace.runtime.auto_snapshot=false
+che.workspace.auto_snapshot=false
 # During the start of the workspace automatically restored it from a snapshot if the value is {true},
 # otherwise just creates the new workspace.
-workspace.runtime.auto_restore=false
+che.workspace.auto_restore=false
 
 # Reserved names that cannot be used as account names
-che.account.reserved_names=api,dashboard,factory,ide-resources,main,site,swagger,ws,f,update,install-single,install-multi,install-codenvy,blog,im,codenvy,che,root
+che.auth.reserved_user_names=api,dashboard,factory,ide-resources,main,site,swagger,ws,f,update,install-single,install-multi,install-codenvy,blog,im,codenvy,che,root
 
 # SSO
 auth.sso.client_allow_anonymous=false
