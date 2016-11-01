@@ -286,7 +286,17 @@ You can run `codenvy init` to install a new configuration into an empty director
 
 If you run `codenvy config`, Codenvy runs puppet to transform your puppet templates into a Codenvy instance configuration, placing the results into `CODENVY_INSTANCE` or if you have not set that then a subdirectory named `/instance`. Each time you start Codenvy, we rerun `codenvy config`. It's ok and expected to regenerate configurations - it's the nature of microservices.
 
-When doing an initialization, if you have `CODENVY_VERSION`, `CODENVY_HOST`, `CODENVY_CONFIG`, or `CODENVY_INSTANCE` set, then those values will be inserted into your `CODENVY_CONFIG/codenvy.env` template. After initialization, you can edit any environmen variable and rerun `codenvy config` to update the system.
+When doing an initialization, if you have `CODENVY_VERSION`, `CODENVY_HOST`, `CODENVY_CONFIG`, or `CODENVY_INSTANCE` set in memory of your shell, then those values will be inserted into your `CODENVY_CONFIG/codenvy.env` template. After initialization, you can edit any environment variable in `codenvy.env` and rerun `codenvy config` to update the system.
+
+#### Version Control
+Administration teams that want to version control your Codenvy configuration should save `CODENVY_CONFIG/codenvy.env`. This is the only file that should be saved with version control. It is not necessary, and even discouraged, to save the other files in the `CODENVY_CONFIG` folder. If you were to perform a `codenvy upgrade` we may replace these files with templates that are specific to the version that is being upgraded. The `codenvy.env` file maintains fidelity between versions and we can generate instance configurations from that.
+
+The version control sequence would be:
+1. `codenvy init` to get an initial configuration for a particular version.
+2. Edit `CODENVY_CONFIG/codenvy.env` with your environment-specific configuration.
+3. Save `CODENVY_CONFIG/codenvy.env` to version control.
+4. When pulling from version control, copy `CODENVY_CONFIG/codenvy.env` into any configuration folder after initialization.
+5. You can then run `codenvy config` or `codenvy start` and the instance configuration will be generated from this file.
 
 #### SMTP
 By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
