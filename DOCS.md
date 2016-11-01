@@ -44,7 +44,7 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
   - [Workspaces]()
   - [Privileged Workspaces]()
   - [Add Additional Workspace Servers]()
-  - [HTTP/HTTPS](http://codenvy.readme.io/docs/security)
+  - [HTTP/S]()
   - [Hostname]()
   - [Networking]()
   - [CLI]()
