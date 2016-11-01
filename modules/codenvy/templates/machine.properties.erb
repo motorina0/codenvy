@@ -16,6 +16,11 @@ che.docker.unused_containers_cleanup_min=60
 docker.client.daemon_url=http://codenvy-swarm:2375
 swarm.client.node_description_length=9
 
+# terminal
+che.workspace.terminal_linux_amd64=/home/codenvy-user/Downloads/terminal
+# ws agent
+che.workspace.agent.dev=/home/codenvy-user/Downloads/ws-agent.tar.gz
+
 machine.ws_agent.run_command=<%= scope.lookupvar('codenvy::machine_ws_agent_run_command') %>
 che.workspace.agent.dev.max_start_time_ms=<%= scope.lookupvar('all_in_one::install::machine_ws_agent_max_start_time_ms') %>
 che.workspace.agent.dev.ping_delay_ms=2000
