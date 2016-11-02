@@ -22,7 +22,7 @@ che.workspace.terminal_linux_amd64=/home/codenvy-user/Downloads/terminal
 che.workspace.agent.dev=/home/codenvy-user/Downloads/ws-agent.tar.gz
 
 machine.ws_agent.run_command=<%= scope.lookupvar('codenvy::machine_ws_agent_run_command') %>
-che.workspace.agent.dev.max_start_time_ms=<%= scope.lookupvar('all_in_one::install::machine_ws_agent_max_start_time_ms') %>
+che.workspace.agent.dev.max_start_time_ms=<%= scope.lookupvar('codenvy::machine_ws_agent_max_start_time_ms') %>
 che.workspace.agent.dev.ping_delay_ms=2000
 che.workspace.agent.dev.ping_conn_timeout_ms=2000
 che.workspace.agent.dev.ping_timeout_error_msg=Timeout. The Che server is unable to ping your workspace. This implies a network configuration issue, workspace boot failure, or an unusually slow workspace boot.
@@ -51,7 +51,7 @@ che.workspace.default_memory_mb=<%= scope.lookupvar('codenvy::machine_default_me
 local.recipe.path=
 
 # extra hosts which will be used in machines
-che.workspace.hosts=<%= scope.lookupvar('all_in_one::install::machine_extra_hosts') %>
+che.workspace.hosts=<%= scope.lookupvar('codenvy::machine_extra_hosts') %>
 che.docker.tcp_connection_timeout_ms=600000
 docker.connection.tcp.read_timeout_ms=600000
 che.docker.always_pull_image=true
