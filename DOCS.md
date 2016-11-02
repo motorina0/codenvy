@@ -2,6 +2,7 @@
 Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of Docker containers.
 
 - Beta
+- Team
 - Getting Stated
  - Explain trial system
  - Explain production system
@@ -144,13 +145,41 @@ This packaging and deployment approach is relatively new. We do not yet consider
 
 6. Add a `codenvy reload` command, which resarts services with a SIGHUP signal instead of a container restart. SIGHUP signals instruct container services to reload their configuration without going through a reboot cycle.
 
+## Team
+See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
+
 ## Getting Stated
 #### Explain trial system
 #### Explain production system
 #### Links to Resources
-## Installation: Trial#### new page focused on how to setup a AIO or AIO+1 environment
+## Installation: Trial
+
+#### System Requirements
+Codenvy installs on Linux, Mac and Windows. 
+
 #### Prerequisites (system requirements, ports, data storage, etc...)
 Docker is a relatively new project and is actively tested by a thriving community.
+
+Hardware Requirements:
+* 2 cores
+* 3GB RAM
+* 3GB disk space
+
+This will let you install Codenvy and run a single workspace. Codenvy's Docker images consume about 800MB of disk and the Docker images for your workspace templates can each range from 5MB up to 1.5GB. Codenvy and its dependent core containers will consume about 500MB of RAM, and your running workspaces will each require at least 250MB RAM, depending upon user requirements and complexity of the workspace code and intellisense.
+
+Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all variations that launch virtual machines that contain a Docker daemon that allows you to run Docker. We recommend increasing your default VM size to at least 4GB. Each virtualization solution has different requirements around mounting VM folders to your host machine - please enable this for your OS so that Codenvy data is persisted on your host disk.
+
+Software Recommendation:
+* Codenvy CLI
+
+The Codenvy images and supporting utilities are downloaded and maintained by the CLI. The CLI also provides utilities for downloading an offline bundle to run Codenvy while disconnected from the network. Reader [Install of AIO]() section below for additional information.
+
+Software Requirements:
+* Docker 11.1+
+* Docker Compose 1.8+. 
+* Bash
+
+Docker for Mac and Windows have compose pre-installed. See: [Install Docker Compose on Linux](https://docs.docker.com/compose/install/). The Docker Toolbox for Windows installs [Git Bash for Windows](https://git-for-windows.github.io/), which is needed to run the CLI, a cross-platform set of bash scripts.
 
 Given the nature of the development and release cycle it is important that you have the latest version of docker installed because any issue that you encounter might have already been fixed with a newer docker release.
 
@@ -175,95 +204,8 @@ In your issue report please make sure you provide the following information:
 - The `codenvy <command>` you used to run Codenvy
 
 #### Install of AIO (incl. proxies)
-#### Usage
-#### Upgrading
-#### HTTPS
-#### Add-node
- #### Ports for nodes as well
-#### Licensing
-## Installation: Production (incl. Proxies, reference the main config sections)
-## Installation: Offline
-#### Downloading images
-#### Transferring
-#### Installing
-## Configuration  
-#### Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
-#### Logs and Data
-#### Licensing
-## Config: Networking
-#### Hostname
-#### HTTP/HTTPS
-#### SMTP
-## Config: Workspaces 
-#### Private Registries
-#### Mirroring DockerHub
-#### Private Repositories
-#### Permissions
-#### Workspace Limits
-## Config: Authentication
-#### oAuth
-#### LDAP
-## Config: Scaling
-#### Add-node
-#### Remove-node
-## Managing
-#### Upgrades
-#### Upgrading
-#### Runbook
-#### Monitoring
-#### Backup (Backup)
-#### Migration
-#### Disaster Recovery#### DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
-## Reference
-#### CLI
-#### API
-## Architecture
-#### Scalability Model
-#### Deployment Model
-#### Service Architecture
 
-
-
-
-
-
-## Team
-See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
-
-
-## System Requirements
-Codenvy installs on Linux, Mac and Windows. 
-
-#### Software
-* Docker 11.1+
-* Docker Compose 1.8+. 
-* Bash
-
-Docker for Mac and Windows have compose pre-installed. See: [Install Docker Compose on Linux](https://docs.docker.com/compose/install/). The Docker Toolbox for Windows installs [Git Bash for Windows](https://git-for-windows.github.io/), which is needed to run the CLI, a cross-platform set of bash scripts.
-
-#### Hardware
-* 2 cores
-* 3GB RAM
-* 3GB disk space
-
-This will let you install Codenvy and run a single workspace. Codenvy's Docker images consume about 800MB of disk and the Docker images for your workspace templates can each range from 5MB up to 1.5GB. Codenvy and its dependent core containers will consume about 500MB of RAM, and your running workspaces will each require at least 250MB RAM, depending upon user requirements and complexity of the workspace code and intellisense.
-
-#### Docker in a VM
-Boot2Docker, docker-machine, Docker for Windows, and Docker for Mac are all variations that launch virtual machines that contain a Docker daemon that allows you to run Docker. We recommend increasing your default VM size to at least 4GB. Each virtualization solution has different requirements around mounting VM folders to your host machine - please enable this for your OS so that Codenvy data is persisted on your host disk.
-
-#### Workspaces
-Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
-
-We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. If you are connected to the Internet, we install rsync and SSH automtaically. However, if you are doing an offline installation, then your workspace base images need to have this software included.
-
-Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
-
-In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
-
-## Installation
-Get the Codenvy CLI. The Codenvy images and supporting utilities are downloaded and maintained by the CLI. The CLI also provides utilities for downloading an offline bundle to run Codenvy while disconnected from the network.
-
-#### Linux
+Linux:
 ```
 sudo curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > /usr/local/bin/codenvy
 sudo curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > /usr/local/bin/cli.sh
@@ -271,7 +213,7 @@ chmod +x /usr/local/bin/codenvy
 chmod +x /usr/local/bin/cli.sh
 ```
 
-#### Mac
+Mac:
 ```
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > /usr/local/bin/codenvy
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > /usr/local/bin/cli.sh
@@ -327,6 +269,68 @@ If you would like your users to have proxified access to the Internet from withi
 ```
 
 `_NO_PROXY` variable setting is required if you use a fake local DNS. Java and other internal utilities will avoid accessing a proxy for internal communications when this value is set.
+
+#### Usage
+#### Upgrading
+#### HTTPS
+#### Add-node
+ #### Ports for nodes as well
+#### Licensing
+## Installation: Production (incl. Proxies, reference the main config sections)
+## Installation: Offline
+#### Downloading images
+#### Transferring
+#### Installing
+## Configuration  
+#### Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
+#### Logs and Data
+#### Licensing
+## Config: Networking
+#### Hostname
+#### HTTP/HTTPS
+#### SMTP
+## Config: Workspaces 
+#### Workspace Requirements
+Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
+
+We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. If you are connected to the Internet, we install rsync and SSH automtaically. However, if you are doing an offline installation, then your workspace base images need to have this software included.
+
+Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
+
+In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
+
+#### Private Registries
+#### Mirroring DockerHub
+#### Private Repositories
+#### Permissions
+#### Workspace Limits
+## Config: Authentication
+#### oAuth
+#### LDAP
+## Config: Scaling
+#### Add-node
+#### Remove-node
+## Managing
+#### Upgrades
+#### Upgrading
+#### Runbook
+#### Monitoring
+#### Backup (Backup)
+#### Migration
+#### Disaster Recovery#### DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
+## Reference
+#### CLI
+#### API
+## Architecture
+#### Scalability Model
+#### Deployment Model
+#### Service Architecture
+
+
+
+
+
+
 
 ## Offline Installation
 We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
