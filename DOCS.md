@@ -1,6 +1,60 @@
 # Codenvy Installation and Operation
 Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of Docker containers.
 
+- Getting Stated
+ - Explain trial system
+ - Explain production system
+ - Links to Resources
+- Installation: Trial - new page focused on how to setup a AIO or AIO+1 environment
+ - Prerequisites (system requirements, ports, data storage, etc...)
+ - Install of AIO (incl. proxies)
+ - Usage - explain how to start the system then link to tutorials and other sections
+ - Upgrading
+ - HTTPS
+ - Add-node
+  - Ports for nodes as well
+ - Licensing
+- Installation: Production (incl. Proxies, reference the main config sections)
+- Installation: Offline
+ - Downloading images
+ - Transferring
+ - Installing
+- Configuration  
+ - Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
+ - Logs and Data
+ - Licensing
+- Config: Networking
+ - Hostname
+ - HTTP/HTTPS
+ - SMTP
+- Config: Workspaces 
+ - Private Registries
+ - Mirroring DockerHub
+ - Private Repositories
+ - Permissions
+ - Workspace Limits
+- Config: Authentication
+ - oAuth
+ - LDAP
+- Config: Scaling
+ - Add-node
+ - Remove-node
+- Managing
+ - Upgrades - Upgrading
+ - Runbook
+ - Monitoring
+ - Backup (Backup)
+ - Migration
+ - Disaster Recovery - DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
+- Reference
+ - CLI
+ - API
+- Architecture
+ - Scalability Model
+ - Deployment Model
+ - Service Architecture
+
+
 - [Beta](#beta)
 - [Team](#Team)
 - [Issues](#Issues)
