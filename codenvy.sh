@@ -9,6 +9,22 @@
 #   Tyler Jewell - Initial Implementation
 #
 
+init_host_arch() {
+  GLOBAL_HOST_ARCH=${GLOBAL_HOST_ARCH:=$(docker version --format \{\{.Client\}\} | cut -d" " -f5)}
+}
+
+init_name_map() {
+  GLOBAL_NAME_MAP=${GLOBAL_NAME_MAP:=$(docker_exec info | grep "Name:" | cut -d" " -f2)}
+}
+
+init_host_ip() {
+  GLOBAL_HOST_IP=${GLOBAL_HOST_IP:=$(docker_exec run --net host --rm codenvy/che-ip:nightly)}
+}
+
+init_uname() {
+  GLOBAL_UNAME=${GLOBAL_UNAME:=$(docker_exec run --rm alpine sh -c "uname -r")}
+}
+
 init_logging() {
   BLUE='\033[1;34m'
   GREEN='\033[0;32m'
@@ -318,6 +334,46 @@ grab_initial_images() {
     log "docker pull codenvy/version >> \"${LOGS}\" 2>&1"
     docker pull codenvy/version >> "${LOGS}" 2>&1
   fi
+
+  if [ "$(docker images -q eclipse/che-test 2> /dev/null)" = "" ]; then
+    info "cli" "Pulling image eclipse/che-test"
+    log "docker pull eclipse/che-test >> \"${LOGS}\" 2>&1"
+    docker pull eclipse/che-test >> "${LOGS}" 2>&1
+  fi
+}
+
+check_volume_mount() {
+  docker_exec run --rm -v $(pwd):/copy eclipse/che-test
+
+  if [[ ! -f $(pwd)/test ]]; then
+    error "Docker installed, but unable to volume mount files from your host."
+    error "Have you enabled Docker to allow mounting host directories?"
+    return 1;
+  fi
+
+  docker_exec run --rm -v $(pwd):/copy alpine sh -c "rm -rf /copy/test"
+}
+
+
+has_docker_for_windows_client(){
+  debug $FUNCNAME
+  init_host_arch
+  if [ "${GLOBAL_HOST_ARCH}" = "windows" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+docker_exec() {
+  debug $FUNCNAME
+  if has_docker_for_windows_client; then
+    log "MSYS_NO_PATHCONV=1 docker.exe \"$@\""
+    MSYS_NO_PATHCONV=1 docker.exe "$@"
+  else
+    log "$(which docker) \$@\""
+    "$(which docker)" "$@"
+  fi
 }
 
 curl() {
@@ -384,6 +440,7 @@ init() {
   check_docker_compose
   grab_offline_images
   grab_initial_images
+  check_volume_mount
 
   # Test to see if we have cli_funcs
   if [[ ! -f ~/."${CHE_MINI_PRODUCT_NAME}"/cli/cli-${CHE_CLI_VERSION}.sh ]] ||

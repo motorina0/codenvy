@@ -13,22 +13,6 @@
 # needed. This will speed performance for methods that do not need this value set.
 # this is the only place where we call docker instead of docker_exec because docker_exec function
 # depends on that GLOBAL_HOST_ARCH
-init_host_arch() {
-  GLOBAL_HOST_ARCH=${GLOBAL_HOST_ARCH:=$(docker version --format \{\{.Client\}\} | cut -d" " -f5)}
-}
-
-init_name_map() {
-  GLOBAL_NAME_MAP=${GLOBAL_NAME_MAP:=$(docker_exec info | grep "Name:" | cut -d" " -f2)}
-}
-
-init_host_ip() {
-  GLOBAL_HOST_IP=${GLOBAL_HOST_IP:=$(docker_exec run --net host --rm codenvy/che-ip:nightly)}
-}
-
-init_uname() {
-  GLOBAL_UNAME=${GLOBAL_UNAME:=$(docker_exec run --rm alpine sh -c "uname -r")}
-}
-
 cli_init() {
   DEFAULT_CODENVY_VERSION="nightly"
   DEFAULT_CODENVY_UTILITY_VERSION="nightly"
@@ -348,27 +332,6 @@ is_moby_vm() {
   fi
 }
 
-has_docker_for_windows_client(){
-  debug $FUNCNAME
-  init_host_arch
-  if [ "${GLOBAL_HOST_ARCH}" = "windows" ]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-docker_exec() {
-  debug $FUNCNAME
-  if has_docker_for_windows_client; then
-    log "MSYS_NO_PATHCONV=1 docker.exe \"$@\""
-    MSYS_NO_PATHCONV=1 docker.exe "$@"
-  else
-    log "$(which docker) \$@\""
-    "$(which docker)" "$@"
-  fi
-}
-
 has_env_variables() {
   debug $FUNCNAME
   PROPERTIES=$(env | grep CODENVY_)
@@ -407,9 +370,10 @@ update_image() {
     shift
   fi
 
+  # Note - do not redirect to logs the docker pull - suppresses important output for user
   info "download" "Pulling image $1"
   text "\n"
-  docker_exec pull $1 >> "${LOGS}" 2>&1 || true
+  docker_exec pull $1 || true
   text "\n"
 }
 
