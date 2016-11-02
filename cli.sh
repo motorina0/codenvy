@@ -11,33 +11,25 @@
 
 # Move this into a dedicated function that is only called when the variable is absolutely
 # needed. This will speed performance for methods that do not need this value set.
+# this is the only place where we call docker instead of docker_exec because docker_exec function
+# depends on that GLOBAL_HOST_ARCH
 init_host_arch() {
-  GLOBAL_HOST_ARCH=${GLOBAL_HOST_ARCH:=$DEFAULT_GLOBAL_HOST_ARCH}
+  GLOBAL_HOST_ARCH=${GLOBAL_HOST_ARCH:=$(docker version --format \{\{.Client\}\} | cut -d" " -f5)}
 }
 
 init_name_map() {
-  GLOBAL_NAME_MAP=${GLOBAL_NAME_MAP:=$(docker info | grep "Name:" | cut -d" " -f2)}
+  GLOBAL_NAME_MAP=${GLOBAL_NAME_MAP:=$(docker_exec info | grep "Name:" | cut -d" " -f2)}
 }
 
 init_host_ip() {
-  GLOBAL_HOST_IP=${GLOBAL_HOST_IP:=$(docker run --net host --rm codenvy/che-ip:nightly)}
+  GLOBAL_HOST_IP=${GLOBAL_HOST_IP:=$(docker_exec run --net host --rm codenvy/che-ip:nightly)}
 }
 
 init_uname() {
-  GLOBAL_UNAME=${GLOBAL_UNAME:=$(docker run --rm alpine sh -c "uname -r")}
-#  GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
+  GLOBAL_UNAME=${GLOBAL_UNAME:=$(docker_exec run --rm alpine sh -c "uname -r")}
 }
 
 cli_init() {
-#  GLOBAL_NAME_MAP=$(docker info | grep "Name:" | cut -d" " -f2)
-#  GLOBAL_HOST_ARCH=$(docker version --format {{.Client}} | cut -d" " -f5)
-#  GLOBAL_HOST_IP=$(docker run --net host --rm codenvy/che-ip:nightly)
-#  GLOBAL_UNAME=$(docker run --rm alpine sh -c "uname -r")
-#  GLOBAL_GET_DOCKER_HOST_IP=$(get_docker_host_ip)
-
-  # Odd - bash fails if this is embedded, so define it globally once
-  DEFAULT_GLOBAL_HOST_ARCH=$(docker version --format {{.Client}} | cut -d" " -f5)
-
   DEFAULT_CODENVY_VERSION="nightly"
   DEFAULT_CODENVY_UTILITY_VERSION="nightly"
   DEFAULT_CODENVY_CLI_ACTION="help"
@@ -281,28 +273,18 @@ get_docker_host_ip() {
    ;;
   esac
 
-  log "docker run --rm --net host \
+  log "docker_exec run --rm --net host \
             alpine sh -c \
             \"ip a show ${NETWORK_IF}\" | \
             grep 'inet ' | \
             cut -d/ -f1 | \
             awk '{ print \$2}'"
-  docker run --rm --net host \
+  docker_exec run --rm --net host \
             alpine sh -c \
             "ip a show ${NETWORK_IF}" | \
             grep 'inet ' | \
             cut -d/ -f1 | \
             awk '{ print $2}'
-}
-
-has_docker_for_windows_client(){
-  debug $FUNCNAME
-  init_host_arch
-  if [ "${GLOBAL_HOST_ARCH}" = "windows" ]; then
-    return 0
-  else
-    return 1
-  fi
 }
 
 get_docker_install_type() {
@@ -401,7 +383,7 @@ update_image_if_not_found() {
   debug $FUNCNAME
 
   text "${GREEN}INFO:${NC} (${CHE_MINI_PRODUCT_NAME} download): Checking for image '$1'..."
-  CURRENT_IMAGE=$(docker images -q "$1")
+  CURRENT_IMAGE=$(docker_exec images -q "$1")
   if [ "${CURRENT_IMAGE}" == "" ]; then
     text "not found\n"
     update_image $1
@@ -416,8 +398,8 @@ update_image() {
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
-    log "docker rmi -f $1 >> \"${LOGS}\""
-    docker rmi -f $1 >> "${LOGS}" || true
+    log "docker_exec rmi -f $1 >> \"${LOGS}\""
+    docker_exec rmi -f $1 >> "${LOGS}" || true
   fi
 
   if [ "${1}" == "--pull" ]; then
@@ -426,7 +408,7 @@ update_image() {
 
   info "download" "Pulling image $1"
   text "\n"
-  docker pull $1 >> "${LOGS}" 2>&1 || true
+  docker_exec pull $1 >> "${LOGS}" 2>&1 || true
   text "\n"
 }
 
@@ -443,7 +425,7 @@ port_open(){
 }
 
 container_exist_by_name(){
-  docker inspect ${1} > /dev/null 2>&1
+  docker_exec inspect ${1} > /dev/null 2>&1
   if [ "$?" == "0" ]; then
     return 0
   else
@@ -452,8 +434,8 @@ container_exist_by_name(){
 }
 
 get_server_container_id() {
-  log "docker inspect -f '{{.Id}}' ${1}"
-  docker inspect -f '{{.Id}}' ${1}
+  log "docker_exec inspect -f '{{.Id}}' ${1}"
+  docker_exec inspect -f '{{.Id}}' ${1}
 }
 
 wait_until_container_is_running() {
@@ -468,7 +450,7 @@ wait_until_container_is_running() {
 }
 
 container_is_running() {
-  if [ "$(docker ps -qa -f "status=running" -f "id=${1}" | wc -l)" -eq 0 ]; then
+  if [ "$(docker_exec ps -qa -f "status=running" -f "id=${1}" | wc -l)" -eq 0 ]; then
     return 1
   else
     return 0
@@ -484,8 +466,8 @@ wait_until_server_is_booted () {
     sleep 2
     # Total hack - having to restart haproxy for some reason on windows
     if is_docker_for_windows || is_docker_for_mac; then
-      log "docker restart codenvy_haproxy_1 >> \"${LOGS}\" 2>&1"
-      docker restart codenvy_haproxy_1 >> "${LOGS}" 2>&1
+      log "docker_exec restart codenvy_haproxy_1 >> \"${LOGS}\" 2>&1"
+      docker_exec restart codenvy_haproxy_1 >> "${LOGS}" 2>&1
     fi
     ELAPSED=$((ELAPSED+1))
   done
@@ -549,8 +531,8 @@ get_version_registry() {
   info "cli" "Downloading version registry..."
 
   ### Remove these comments once in production
-  log "docker pull $CHE_GLOBAL_VERSION_IMAGE >> \"${LOGS}\" 2>&1 || true"
-  docker pull $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
+  log "docker_exec pull $CHE_GLOBAL_VERSION_IMAGE >> \"${LOGS}\" 2>&1 || true"
+  docker_exec pull $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
   log "docker_exec run --rm -v \"${CODENVY_MANIFEST_DIR}\":/copy $CHE_GLOBAL_VERSION_IMAGE"
   docker_exec run --rm -v "${CODENVY_MANIFEST_DIR}":/copy $CHE_GLOBAL_VERSION_IMAGE
 }
@@ -831,8 +813,8 @@ cmd_config() {
     # in development mode to avoid permissions issues we copy tomcat assembly to ${CODENVY_INSTANCE}
     # if codenvy development tomcat exist we remove it
     if [[ -d "${CODENVY_INSTANCE}/development-tomcat" ]]; then
-        log "docker run --rm -v \"${CODENVY_INSTANCE}/development-tomcat\":/root/development-tomcat alpine sh -c \"rm -rf /root/development-tomcat/*\""
-        docker run --rm -v "${CODENVY_INSTANCE}/development-tomcat":/root/development-tomcat alpine sh -c "rm -rf /root/development-tomcat/*"
+        log "docker_exec run --rm -v \"${CODENVY_INSTANCE}/development-tomcat\":/root/development-tomcat alpine sh -c \"rm -rf /root/development-tomcat/*\""
+        docker_exec run --rm -v "${CODENVY_INSTANCE}/development-tomcat":/root/development-tomcat alpine sh -c "rm -rf /root/development-tomcat/*"
         log "rm -rf \"${CODENVY_INSTANCE}/development-tomcat\" >> \"${LOGS}\""
         rm -rf "${CODENVY_INSTANCE}/development-tomcat"
     fi
@@ -868,8 +850,8 @@ cmd_config() {
     # On Windows, it is not possible to volume mount postgres data folder directly
     # This creates a named volume which will store postgres data in docker for win VM
     # TODO - in future, we can write synchronizer utility to copy data from win VM to host
-    log "docker volume create --name=codenvy-postgresql-volume >> \"${LOGS}\""
-    docker volume create --name=codenvy-postgresql-volume >> "${LOGS}"
+    log "docker_exec volume create --name=codenvy-postgresql-volume >> \"${LOGS}\""
+    docker_exec volume create --name=codenvy-postgresql-volume >> "${LOGS}"
   fi;
 }
 
@@ -951,15 +933,15 @@ cmd_destroy() {
 
   cmd_stop
   info "destroy" "Deleting instance and config"
-  log "docker run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
-  docker run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
+  log "docker_exec run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
+  docker_exec run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
   log "rm -rf \"${CODENVY_CONFIG}\" >> \"${LOGS}\""
   log "rm -rf \"${CODENVY_INSTANCE}\" >> \"${LOGS}\""
   rm -rf "${CODENVY_CONFIG}"
   rm -rf "${CODENVY_INSTANCE}"
   if has_docker_for_windows_client; then
-    log "docker volume rm codenvy-postgresql-volume >> \"${LOGS}\" 2>&1 || true"
-    docker volume rm codenvy-postgresql-volume >> "${LOGS}" 2>&1 || true
+    log "docker_exec volume rm codenvy-postgresql-volume >> \"${LOGS}\" 2>&1 || true"
+    docker_exec volume rm codenvy-postgresql-volume >> "${LOGS}" 2>&1 || true
   fi
 }
 
@@ -982,13 +964,13 @@ cmd_rmi() {
   for SINGLE_IMAGE in $IMAGE_LIST; do
     VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
     info "rmi" "Removing $VALUE_IMAGE..."
-    log "docker rmi -f ${VALUE_IMAGE} >> \"${LOGS}\" 2>&1 || true"
-    docker rmi -f $VALUE_IMAGE >> "${LOGS}" 2>&1 || true
+    log "docker_exec rmi -f ${VALUE_IMAGE} >> \"${LOGS}\" 2>&1 || true"
+    docker_exec rmi -f $VALUE_IMAGE >> "${LOGS}" 2>&1 || true
   done
 
   # This is Codenvy's singleton instance with the version registry
   info "rmi" "Removing $CHE_GLOBAL_VERSION_IMAGE"
-  docker rmi -f $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
+  docker_exec rmi -f $CHE_GLOBAL_VERSION_IMAGE >> "${LOGS}" 2>&1 || true
 }
 
 cmd_upgrade() {
@@ -1078,13 +1060,13 @@ cmd_backup() {
   fi
 
   info "backup" "Saving configuration..."
-  docker run --rm \
+  docker_exec run --rm \
     -v "${CODENVY_CONFIG}":/root/codenvy-config \
     -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
     alpine sh -c "tar czf /root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME} -C /root/codenvy-config ."
 
   info "backup" "Saving instance data..."
-  docker run --rm \
+  docker_exec run --rm \
     -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
     -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
     alpine sh -c "tar czf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance . --exclude=logs ${TAR_EXTRA_EXCLUDE}"
@@ -1114,8 +1096,8 @@ cmd_restore() {
   fi
 
   # remove config and instance folders
-  log "docker run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
-  docker run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
+  log "docker_exec run --rm -v \"${CODENVY_CONFIG}\":/codenvy-config -v \"${CODENVY_INSTANCE}\":/codenvy-instance alpine sh -c \"rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*\""
+  docker_exec run --rm -v "${CODENVY_CONFIG}":/root/codenvy-config -v "${CODENVY_INSTANCE}":/root/codenvy-instance alpine sh -c "rm -rf /root/codenvy-instance/* && rm -rf /root/codenvy-config/*"
   log "rm -rf \"${CODENVY_CONFIG}\" >> \"${LOGS}\""
   log "rm -rf \"${CODENVY_INSTANCE}\" >> \"${LOGS}\""
   rm -rf "${CODENVY_CONFIG}"
@@ -1123,14 +1105,14 @@ cmd_restore() {
 
   info "restore" "Recovering configuration..."
   mkdir -p "${CODENVY_CONFIG}"
-  docker run --rm \
+  docker_exec run --rm \
     -v "${CODENVY_CONFIG}":/root/codenvy-config \
     -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_CONFIG_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME}" \
     alpine sh -c "tar xf /root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME} -C /root/codenvy-config"
 
   info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
-  docker run --rm \
+  docker_exec run --rm \
     -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
     -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
     alpine sh -c "tar xf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance"
@@ -1156,14 +1138,14 @@ cmd_offline() {
     VALUE_IMAGE=$(echo $SINGLE_IMAGE | cut -d'=' -f2)
     TAR_NAME=$(echo $VALUE_IMAGE | sed "s|\/|_|")
     info "offline" "Saving $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar..."
-    if ! $(docker save $VALUE_IMAGE > $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar); then
+    if ! $(docker_exec save $VALUE_IMAGE > $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar); then
       error "Docker was interrupted while saving $CODENVY_OFFLINE_FOLDER/$TAR_NAME.tar"
       return 1;
     fi
   done
 
   # This is Codenvy's singleton instance with the version registry
-  docker save $CHE_GLOBAL_VERSION_IMAGE > "${CODENVY_OFFLINE_FOLDER}"/codenvy_version.tar
+  docker_exec save $CHE_GLOBAL_VERSION_IMAGE > "${CODENVY_OFFLINE_FOLDER}"/codenvy_version.tar
   info "offline" "Images saved as tars in $CODENVY_OFFLINE_FOLDER"
 }
 
@@ -1238,7 +1220,7 @@ cmd_network() {
   log "docker_exec run -d -p 12345:80 --name fakeagent alpine httpd -f -p 80 -h /etc/ >> \"${LOGS}\""
   docker_exec run -d -p 12345:80 --name fakeagent alpine httpd -f -p 80 -h /etc/ >> "${LOGS}"
 
-  AGENT_INTERNAL_IP=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' fakeagent)
+  AGENT_INTERNAL_IP=$(docker_exec inspect --format='{{.NetworkSettings.IPAddress}}' fakeagent)
   AGENT_INTERNAL_PORT=80
   AGENT_EXTERNAL_IP=$CODENVY_HOST
   AGENT_EXTERNAL_PORT=12345
@@ -1267,7 +1249,7 @@ cmd_network() {
   fi
 
   ### TEST 2: Simulate Che server ==> workspace agent (external IP) connectivity
-  export HTTP_CODE=$(docker run --rm --name fakeserver \
+  export HTTP_CODE=$(docker_exec run --rm --name fakeserver \
                                 --entrypoint=curl \
                                 ${IMAGE_CODENVY} \
                                   -I ${AGENT_EXTERNAL_IP}:${AGENT_EXTERNAL_PORT}/alpine-release \
@@ -1281,7 +1263,7 @@ cmd_network() {
   fi
 
   ### TEST 3: Simulate Che server ==> workspace agent (internal IP) connectivity
-  export HTTP_CODE=$(docker run --rm --name fakeserver \
+  export HTTP_CODE=$(docker_exec run --rm --name fakeserver \
                                 --entrypoint=curl \
                                 ${IMAGE_CODENVY} \
                                   -I ${AGENT_INTERNAL_IP}:${AGENT_INTERNAL_PORT}/alpine-release \
@@ -1294,8 +1276,8 @@ cmd_network() {
       info "Server     => Workspace Agent (Internal IP): Connection failed"
   fi
 
-  log "docker rm -f fakeagent >> \"${LOGS}\""
-  docker rm -f fakeagent >> "${LOGS}"
+  log "docker_exec rm -f fakeagent >> \"${LOGS}\""
+  docker_exec rm -f fakeagent >> "${LOGS}"
 }
 
 # Prints command that should be executed on a node to add it to swarm cluster
