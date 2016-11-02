@@ -76,7 +76,7 @@ Usage: ${CHE_MINI_PRODUCT_NAME} [COMMAND]
     remove-node <ip>                     Removes the physical node from the ${CHE_MINI_PRODUCT_NAME} cluster
     upgrade                              Upgrades Codenvy from one version to another with migrations and backups
     download [--pull|--force|--offline]  Pulls Docker images for the current Codenvy version
-    backup [--quiet|--skip-codenvy-data] Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
+    backup [--quiet|--skip-data] Backups ${CHE_MINI_PRODUCT_NAME} configuration and data to CODENVY_BACKUP_FOLDER
     restore [--quiet]                    Restores ${CHE_MINI_PRODUCT_NAME} configuration and data from CODENVY_BACKUP_FOLDER
     offline                              Saves ${CHE_MINI_PRODUCT_NAME} Docker images into TAR files for offline install
     info [ --all                         Run all debugging tests

@@ -48,7 +48,7 @@ cli_init() {
   CODENVY_CLI_ACTION=${CODENVY_CLI_ACTION:-${DEFAULT_CODENVY_CLI_ACTION}}
   CODENVY_DEVELOPMENT_MODE=${CODENVY_DEVELOPMENT_MODE:-${DEFAULT_CODENVY_DEVELOPMENT_MODE}}
   CODENVY_DEVELOPMENT_REPO=$(get_mount_path ${CODENVY_DEVELOPMENT_REPO:-${DEFAULT_CODENVY_DEVELOPMENT_REPO}})
-  CODENVY_DEVELOPMENT_TOMCAT="${CODENVY_INSTANCE}/development-tomcat"
+  CODENVY_DEVELOPMENT_TOMCAT="${CODENVY_INSTANCE}/dev"
 
   if [ "${CODENVY_DEVELOPMENT_MODE}" == "on" ]; then
     if [[ ! -d "${CODENVY_DEVELOPMENT_REPO}"  ]] || [[ ! -d "${CODENVY_DEVELOPMENT_REPO}/assembly" ]]; then
@@ -812,15 +812,15 @@ cmd_config() {
 
     # in development mode to avoid permissions issues we copy tomcat assembly to ${CODENVY_INSTANCE}
     # if codenvy development tomcat exist we remove it
-    if [[ -d "${CODENVY_INSTANCE}/development-tomcat" ]]; then
-        log "docker_exec run --rm -v \"${CODENVY_INSTANCE}/development-tomcat\":/root/development-tomcat alpine sh -c \"rm -rf /root/development-tomcat/*\""
-        docker_exec run --rm -v "${CODENVY_INSTANCE}/development-tomcat":/root/development-tomcat alpine sh -c "rm -rf /root/development-tomcat/*"
-        log "rm -rf \"${CODENVY_INSTANCE}/development-tomcat\" >> \"${LOGS}\""
-        rm -rf "${CODENVY_INSTANCE}/development-tomcat"
+    if [[ -d "${CODENVY_INSTANCE}/dev" ]]; then
+        log "docker_exec run --rm -v \"${CODENVY_INSTANCE}/dev\":/root/dev alpine sh -c \"rm -rf /root/dev/*\""
+        docker_exec run --rm -v "${CODENVY_INSTANCE}/dev":/root/dev alpine sh -c "rm -rf /root/dev/*"
+        log "rm -rf \"${CODENVY_INSTANCE}/dev\" >> \"${LOGS}\""
+        rm -rf "${CODENVY_INSTANCE}/dev"
     fi
     # copy codenvy development tomcat to ${CODENVY_INSTANCE} folder
     cp -r "$(get_mount_path $(echo $CODENVY_DEVELOPMENT_REPO/$DEFAULT_CODENVY_DEVELOPMENT_TOMCAT-*/))" \
-        "${CODENVY_INSTANCE}/development-tomcat"
+        "${CODENVY_INSTANCE}/dev"
 
     # generate configs and print puppet output logs to console if dev mode is on
     generate_configuration_with_puppet
@@ -1026,8 +1026,8 @@ cmd_backup() {
   debug $FUNCNAME
 
   # possibility to skip codenvy projects backup
-  SKIP_BACKUP_CODENVY_DATA=${1:-"--no-skip-codenvy-data"}
-  if [[ "${SKIP_BACKUP_CODENVY_DATA}" == "--skip-codenvy-data" ]]; then
+  SKIP_BACKUP_CODENVY_DATA=${1:-"--no-skip-data"}
+  if [[ "${SKIP_BACKUP_CODENVY_DATA}" == "--skip-data" ]]; then
     TAR_EXTRA_EXCLUDE="--exclude=data/codenvy"
   else
     TAR_EXTRA_EXCLUDE=""
