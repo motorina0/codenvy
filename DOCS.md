@@ -1,6 +1,7 @@
 # Codenvy Installation and Operation
 Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of Docker containers.
 
+- Beta
 - Getting Stated
  - Explain trial system
  - Explain production system
@@ -125,6 +126,9 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
 - [CLI Reference](#cli_reference)
 - [API]()
 
+
+
+
 ## Beta
 This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016. Items to be added:
 
@@ -140,10 +144,12 @@ This packaging and deployment approach is relatively new. We do not yet consider
 
 6. Add a `codenvy reload` command, which resarts services with a SIGHUP signal instead of a container restart. SIGHUP signals instruct container services to reload their configuration without going through a reboot cycle.
 
-## Team
-See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
-
-## Issues
+## Getting Stated
+#### Explain trial system
+#### Explain production system
+#### Links to Resources
+## Installation: Trial#### new page focused on how to setup a AIO or AIO+1 environment
+#### Prerequisites (system requirements, ports, data storage, etc...)
 Docker is a relatively new project and is actively tested by a thriving community.
 
 Given the nature of the development and release cycle it is important that you have the latest version of docker installed because any issue that you encounter might have already been fixed with a newer docker release.
@@ -167,6 +173,63 @@ In your issue report please make sure you provide the following information:
 - Output of the `docker version` command
 - Output of the `docker info` command
 - The `codenvy <command>` you used to run Codenvy
+
+#### Install of AIO (incl. proxies)
+#### Usage
+#### Upgrading
+#### HTTPS
+#### Add-node
+ #### Ports for nodes as well
+#### Licensing
+## Installation: Production (incl. Proxies, reference the main config sections)
+## Installation: Offline
+#### Downloading images
+#### Transferring
+#### Installing
+## Configuration  
+#### Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
+#### Logs and Data
+#### Licensing
+## Config: Networking
+#### Hostname
+#### HTTP/HTTPS
+#### SMTP
+## Config: Workspaces 
+#### Private Registries
+#### Mirroring DockerHub
+#### Private Repositories
+#### Permissions
+#### Workspace Limits
+## Config: Authentication
+#### oAuth
+#### LDAP
+## Config: Scaling
+#### Add-node
+#### Remove-node
+## Managing
+#### Upgrades
+#### Upgrading
+#### Runbook
+#### Monitoring
+#### Backup (Backup)
+#### Migration
+#### Disaster Recovery#### DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
+## Reference
+#### CLI
+#### API
+## Architecture
+#### Scalability Model
+#### Deployment Model
+#### Service Architecture
+
+
+
+
+
+
+## Team
+See [Contributors](../../graphs/contributors) for the complete list of developers that have contributed to this project.
+
 
 ## System Requirements
 Codenvy installs on Linux, Mac and Windows. 
