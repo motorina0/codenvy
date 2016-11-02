@@ -292,8 +292,8 @@ sudo ifconfig lo0 alias $DOCKER_VM_IP
 
 #### Windows
 ```
-curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.sh > che.sh
-curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/che.bat > che.bat
+curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.sh > codenvy.sh
+curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/codenvy.bat > codenvy.bat
 curl -sL https://raw.githubusercontent.com/codenvy/codenvy/hackathon/cli.sh > cli.sh
 set PATH=<path-to-cli>;%PATH%
 ```
