@@ -56,80 +56,6 @@ Codenvy makes cloud workspaces for develoment teams. Install Codenvy as a set of
  - Deployment Model
  - Service Architecture
 
-
-- [Beta](#beta)
-- [Team](#Team)
-- [Issues](#Issues)
-- [Architecture]()
-  - [Scalability Model]()
-  - [Deployment Model]()
-  - [Service Architecture]()
-- [Single Node Architecture]()
-  - [Data Storage]()
-  - [Externally Available Ports]()
-  - [Internal Ports]()
-- [Single Node and Machine Nodes Architecture]()
-  - [Data Storage]()
-  - [Master Node Externally Available Ports]()
-  - [Master Node Internal Ports]()
-  - [Machine Nodes Externally Available Ports]()
-  - [Machine Nodes Internal Ports]()
-- [System Requirements](#system-requirements)
-  - [Software]()
-  - [Hardware]()
-  - [Docker in a VM]()
-  - [Workspaces]()
-- [Installation](#installation)
-  - [Linux](#linux)
-  - [Mac](#mac)
-  - [Windows](#windows)
-  - [Proxies](#proxies)
-  - [Multi Server]()
-  - [Troubleshooting]()
-  - [Bitnami]()
-- [Offline Installation](#offline-installation)
-  - [Save Docker Images](save-docker-images)
-- [Quick Start](#quick-start)
-  - [Hosting](#hosting)
-- [Uninstall]()
-- [Configuration](#configuration)
-  - [Before Installation]()
-  - [After Installation]()
-  - [SMTP](#smtp-configuration)
-  - [oAuth](#oauth)
-  - [Workspaces]()
-  - [Privileged Workspaces]()
-  - [Add Additional Workspace Servers]()
-  - [HTTP/S]()
-  - [Hostname]()
-  - [Networking]()
-  - [CLI]()
-  - [LDAP]()
-  - [Stacks]()
-  - [Projects]()
-  - [Private Docker Registries]() 
-  - [Mirroring Docker Hub]()
-  - [Going Direct to Puppet]()
-- [Runbook]()
-- [Logs and User Data](#logs-and-user-data)
-- [Upgrading](#Updates)
-- [Scaling](#Scaling)
-- [Licensing]()
-- [Authentication]()
-- [Networking]()
-- [User Management]()
-- [Email]()
-- [Permissions]()
-- [Backup and Recovery](#Backups)
-- [Development Mode](#development-mode)
-- [Migration](#migration)
-- [Monitoring](#Monitoring)
-- [CLI Reference](#cli_reference)
-- [API]()
-
-
-
-
 ## Beta
 This packaging and deployment approach is relatively new. We do not yet consider this ready for production deployment of Codenvy. We hope to offer this as the primary production configuration by the end of 2016. Items to be added:
 
@@ -251,110 +177,6 @@ codenvy help
 The CLI is self-updating. If you modify the `cli.sh` companion script or change your `CODENVY_VERSION` then an updated CLI will be downloaded. The CLI installs its core subsystems into `~/.codenvy/cli`.
 
 #### Usage
-#### Upgrading
-#### HTTPS
-#### Add-node
- #### Ports for nodes as well
-#### Licensing
-## Installation: Production (incl. Proxies, reference the main config sections)
-## Installation: Offline
-We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
-
-#### Downloading images
-While connected to the Internet and with access to DockerHub, download Codenvy's Docker images as a set of files with `codenvy offline`. Codenvy will download all dependent images and save them to `offline/*.tar` with each image saved as its own file. `CODENVY_VERSION` environment variable is used to determine which images to download unless you already have a Codenvy installation, then the value of `instance/codenvy.ver` will be used. There is about 1GB of data that will be saved.
-
-#### Transferring
-Save `codenvy.sh`, `cli.sh`, and if on Windows, `codenvy.bat`.
-
-Out of the box, Codenvy has configured a few dozen stacks for popular programming languages and frameworks. These stacks use "recipes" which contain links to Docker images that are needed to create workspaces from these stacks. These workspace runtime images are not saved as part of `codenvy offline`. There are many of these images and they consume a lot of disk space. Most users do not require all of these stacks and most replace default stacks with custom stacks using their own Docker images. If you'd like to get the images that are associated with Codenvy's stacks:
-```
-docker save <codenvy-stack-image-name> > offline/<base-image-name>.tar
-```
-The list of images that Codenvy manages is sourced from Eclipse Che's [Dockerfiles repository](https://github.com/eclipse/che-dockerfiles/tree/master/recipes). Each folder is named the same way that our images are stored.  The `alpine_jdk8` folder represents the `codenvy/alpine_jdk8` Docker image, which you would save with `docker save codenvy/alpine_jdk8 > offline/alpine_jdk8.tar`.
-
-#### Usage
-Extract your files to an offline computer with Docker already configured. Install the CLI files to a directory on your path and ensure that they have execution permissions. Execute the CLI in the directory that has the `offline` sub-folder which contains your tar files. Then start Codenvy in `--offline` mode:
-```
-codenvy start --offline
-```
-When invoked with the `offline` parameter, the Codenvy CLI performs a preboot sequence, which loads all saved `offline/*.tar` images including any Codenvy stack images you saved. The preboot sequence takes place before any CLI configuration, which itself depends upon Docker. The `codenvy start`, `codenvy download`, and `codenvy init` commands support `--offline` mode which triggers this preboot seequence.
-
-## Configuration  
-#### Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
-We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are three proxy configurations:
-1. Configuring Docker proxy access so that Codenvy can download images from DockerHub.
-2. Configuring Codenvy's system containers so that internal services can proxy to the Internet.
-3. Optionally, configuring workspace proxy settings to allow users within a workspace to proxy to the Internet.
-
-Before starting Codenvy, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). If you plan to scale Codenvy with multiple host nodes, each host node must have its Docker daemon configured for proxy access.
-
-Codenvy's system runs on Java, and the JVM requires proxy environment variables in our `JAVA_OPTS`. We use the JVM for the core Codenvy server and the workspace agents that run within each workspace. You must set the proxy parameters for these system properties `/CODENVY_INSTANCE/codenvy.env`. Please be mindful of the proxy URL formatting. Proxies are unforgiving if do not enter the URL perfectly, inclduing the protocol, port and whether they allow a trailing slash/.
-```
-CODENVY_HTTP_PROXY_FOR_CODENVY=http://myproxy.com:8001/
-CODENVY_HTTPS_PROXY_FOR_CODENVY=http://myproxy.com:8001/
-CODENVY_NO_PROXY_FOR_CODENVY=<ip-or-domains-that-do-not-require-proxy-access>
-```
-
-If you would like your users to have proxified access to the Internet from within their workspace, those workspace runtimes need to have proxy settings applied to their environment variables in their .bashrc or equivalent. Configuring these parameters will have Codenvy automatically configure new workspaces with the proper environment variables. 
-```
-# CODENVY_HTTP_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
-# CODENVY_HTTPS_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
-# CODENVY_NO_PROXY_FOR_CODENVY_WORKSPACES=<ip-or-domains-that-do-not-require-proxy-access>
-```
-
-`_NO_PROXY` variable setting is required if you use a fake local DNS. Java and other internal utilities will avoid accessing a proxy for internal communications when this value is set.
-
-#### Logs and Data
-#### Licensing
-## Config: Networking
-#### Hostname
-#### HTTP/HTTPS
-#### SMTP
-## Config: Workspaces 
-#### Workspace Requirements
-Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
-
-We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. If you are connected to the Internet, we install rsync and SSH automtaically. However, if you are doing an offline installation, then your workspace base images need to have this software included.
-
-Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
-
-In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
-
-#### Private Registries
-#### Mirroring DockerHub
-#### Private Repositories
-#### Permissions
-#### Workspace Limits
-## Config: Authentication
-#### oAuth
-#### LDAP
-## Config: Scaling
-#### Add-node
-#### Remove-node
-## Managing
-#### Upgrades
-#### Upgrading
-#### Runbook
-#### Monitoring
-#### Backup (Backup)
-#### Migration
-#### Disaster Recovery#### DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
-## Reference
-#### CLI
-#### API
-## Architecture
-#### Scalability Model
-#### Deployment Model
-#### Service Architecture
-
-
-
-
-
-
-
-
-## Quick Start
 `codenvy start`
 This installs a Codenvy configuration, downloads Codenvy's Docker images, run pre-flight port checks, boot Codenvy's services, and run post-flight checks. You do not need root access to start Codenvy, unless your environment requires it for Docker operations. You will need write access to the current directory and to `~/.codenvy` where certain CLI and manifest information is stored.
 
@@ -382,8 +204,36 @@ user: admin
 pass: password
 ```
 
+
+#### Upgrading
 #### Hosting
 We use an internal utility, `codenvy/che-ip`, to determine the default value for `CODENVY_HOST`, which is your server's IP address. This works well on desktops, but usually fails on hosted servers. If you are hosting Codenvy at a cloud service like DigitalOcean, set `CODENVY_HOST` to the server's IP address or its DNS.
+#### HTTPS
+#### Add-node
+ #### Ports for nodes as well
+#### Licensing
+## Installation: Production (incl. Proxies, reference the main config sections)
+## Installation: Offline
+We support the ability to install and run Codenvy while disconnected from the Internet. This is helpful for certain restricted environments, regulated datacenters, or offshore installations. 
+
+#### Downloading images
+While connected to the Internet and with access to DockerHub, download Codenvy's Docker images as a set of files with `codenvy offline`. Codenvy will download all dependent images and save them to `offline/*.tar` with each image saved as its own file. `CODENVY_VERSION` environment variable is used to determine which images to download unless you already have a Codenvy installation, then the value of `instance/codenvy.ver` will be used. There is about 1GB of data that will be saved.
+
+#### Transferring
+Save `codenvy.sh`, `cli.sh`, and if on Windows, `codenvy.bat`.
+
+Out of the box, Codenvy has configured a few dozen stacks for popular programming languages and frameworks. These stacks use "recipes" which contain links to Docker images that are needed to create workspaces from these stacks. These workspace runtime images are not saved as part of `codenvy offline`. There are many of these images and they consume a lot of disk space. Most users do not require all of these stacks and most replace default stacks with custom stacks using their own Docker images. If you'd like to get the images that are associated with Codenvy's stacks:
+```
+docker save <codenvy-stack-image-name> > offline/<base-image-name>.tar
+```
+The list of images that Codenvy manages is sourced from Eclipse Che's [Dockerfiles repository](https://github.com/eclipse/che-dockerfiles/tree/master/recipes). Each folder is named the same way that our images are stored.  The `alpine_jdk8` folder represents the `codenvy/alpine_jdk8` Docker image, which you would save with `docker save codenvy/alpine_jdk8 > offline/alpine_jdk8.tar`.
+
+#### Usage
+Extract your files to an offline computer with Docker already configured. Install the CLI files to a directory on your path and ensure that they have execution permissions. Execute the CLI in the directory that has the `offline` sub-folder which contains your tar files. Then start Codenvy in `--offline` mode:
+```
+codenvy start --offline
+```
+When invoked with the `offline` parameter, the Codenvy CLI performs a preboot sequence, which loads all saved `offline/*.tar` images including any Codenvy stack images you saved. The preboot sequence takes place before any CLI configuration, which itself depends upon Docker. The `codenvy start`, `codenvy download`, and `codenvy init` commands support `--offline` mode which triggers this preboot seequence.
 
 ## Uninstall
 ```
@@ -418,6 +268,43 @@ The version control sequence would be:
 4. When pulling from version control, copy `CODENVY_CONFIG/codenvy.env` into any configuration folder after initialization.
 5. You can then run `codenvy config` or `codenvy start` and the instance configuration will be generated from this file.
 
+#### Proxies (Config: Proxies : Take section out of https://codenvy.readme.io/v5.0/docs/configuration-docker)
+We support installation and operation behind a proxy. You will be operating a clustered system that is managed by Docker, and itself is managing a cluster of workspaces each with their own runtime(s). There are three proxy configurations:
+1. Configuring Docker proxy access so that Codenvy can download images from DockerHub.
+2. Configuring Codenvy's system containers so that internal services can proxy to the Internet.
+3. Optionally, configuring workspace proxy settings to allow users within a workspace to proxy to the Internet.
+
+Before starting Codenvy, configure [Docker's daemon for proxy access](https://docs.docker.com/engine/admin/systemd/#/http-proxy). If you plan to scale Codenvy with multiple host nodes, each host node must have its Docker daemon configured for proxy access.
+
+Codenvy's system runs on Java, and the JVM requires proxy environment variables in our `JAVA_OPTS`. We use the JVM for the core Codenvy server and the workspace agents that run within each workspace. You must set the proxy parameters for these system properties `/CODENVY_INSTANCE/codenvy.env`. Please be mindful of the proxy URL formatting. Proxies are unforgiving if do not enter the URL perfectly, inclduing the protocol, port and whether they allow a trailing slash/.
+```
+CODENVY_HTTP_PROXY_FOR_CODENVY=http://myproxy.com:8001/
+CODENVY_HTTPS_PROXY_FOR_CODENVY=http://myproxy.com:8001/
+CODENVY_NO_PROXY_FOR_CODENVY=<ip-or-domains-that-do-not-require-proxy-access>
+```
+
+If you would like your users to have proxified access to the Internet from within their workspace, those workspace runtimes need to have proxy settings applied to their environment variables in their .bashrc or equivalent. Configuring these parameters will have Codenvy automatically configure new workspaces with the proper environment variables. 
+```
+# CODENVY_HTTP_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
+# CODENVY_HTTPS_PROXY_FOR_CODENVY_WORKSPACES=http://myproxy.com:8001/
+# CODENVY_NO_PROXY_FOR_CODENVY_WORKSPACES=<ip-or-domains-that-do-not-require-proxy-access>
+```
+
+`_NO_PROXY` variable setting is required if you use a fake local DNS. Java and other internal utilities will avoid accessing a proxy for internal communications when this value is set.
+
+#### Logs and Data
+#### Licensing
+## Config: Networking
+#### Hostname
+#### HTTP/S
+By default Codenvy runs over HTTP as this is simplest to install. You can switch to HTTPS at any time. 
+
+There are two requirements for configuring HTTP/S:
+1. You must bind Codenvy to a valid DNS name. The HTTP mode of Codenvy allows us to operate over IP addresses. HTTP/S requires certificates that are bound to a DNS entries that you purchase from a DNS provider.
+2. A valid SSL certificate.
+
+TODO: [https://codenvy.readme.io/v5.0/docs/security](https://codenvy.readme.io/v5.0/docs/security)
+
 #### SMTP
 By default, Codenvy is configured to use a dummy mail server which makes registration with user email not possible, although admin can still create users or configure oAuth. To configure Codenvy to use SMTP server of choice, provide values for the following environment variables in `codenvy.env` (below is an example for GMAIL):
 
@@ -433,6 +320,24 @@ CODENVY_MAIL_SMTP_SOCKETFACTORY_CLASS=javax.net.ssl.SSLSocketFactory
 CODENVY_MAIL_SMTP_SOCKETFACTORY_FALLBACK=false
 ```
 
+## Config: Workspaces 
+#### Workspace Requirements
+Currently, Codenvy's workspaces launch a tiny rsync-agent that allows the centralized Codenvy server to backup project source code from within each workspace to the central servers. When workspaces are shut off or restarted, the project files are automatically rsync'd back into the workspace. rsync runs at workspace start, stop, and on a scheduler. This allows us to preserve the integrity of your source code if the workspace's runtime containers were to have a failure during operation.
+
+We install rsync into each user's workspace to run as a background service. In this version of Codenvy, your user workspaces requires SSH and rsync to be installed in the base image. If you are connected to the Internet, we install rsync and SSH automtaically. However, if you are doing an offline installation, then your workspace base images need to have this software included.
+
+Some base images, like ubuntu, support this, but others like alpine, do not. If you create custom workspace recipes from Composefiles or Dockerfiles to run within Codenvy, these images must inherit from a base image that has rsync and SSH or you must ensure that these services are installed. If you do not have these services installed, the workspace will not start and provide an error to the user that may cause them to scratch their head.
+
+In the non-container installation version of Codenvy, this requirement does not exist since we install these dependencies onto each host node that is added into the Codenvy cluster. We will be working to package up the rsync agent as a container that is deployed outside of your workspace's runtime. The container will have the dependencies and then this requirement will be removed.
+
+#### Private Registries
+#### Mirroring DockerHub
+#### Private Repositories
+#### Permissions
+#### Workspace Limits
+You can place limits on how users interact with the system to control overall system resource usage. You can define how many workspaces created, RAM consumed, idle timeout, and a variety of other parameters. See "Workspace Limits" in `CODENVY_CONFIG/codenvy.env`.
+
+## Config: Authentication
 #### oAuth
 You can configure Google, GitHub, Microsoft, BitBucket, or WSO2 oAuth for use when users login or create an account.
 
@@ -448,17 +353,37 @@ CODENVY_GOOGLE_CLIENT_ID=yourID
 CODENVY_GOOGLE_SECRET=yourSecret
 ```
 
-#### Workspace Limits
-You can place limits on how users interact with the system to control overall system resource usage. You can define how many workspaces created, RAM consumed, idle timeout, and a variety of other parameters. See "Workspace Limits" in `CODENVY_CONFIG/codenvy.env`.
+#### LDAP
+## Config: Scaling
+#### Add-node
+#### Remove-node
+## Managing
+#### Upgrades
+#### Upgrading
+#### Runbook
+#### Monitoring
+#### Backup (Backup)
+#### Migration
+#### Disaster Recovery#### DR page (http://codenvy.readme.io/v5.0/docs/disaster-recovery)
+## Reference
+#### CLI
+#### API
+## Architecture
+#### Scalability Model
+#### Deployment Model
+#### Service Architecture
 
-#### HTTP/S
-By default Codenvy runs over HTTP as this is simplest to install. You can switch to HTTPS at any time. 
 
-There are two requirements for configuring HTTP/S:
-1. You must bind Codenvy to a valid DNS name. The HTTP mode of Codenvy allows us to operate over IP addresses. HTTP/S requires certificates that are bound to a DNS entries that you purchase from a DNS provider.
-2. A valid SSL certificate.
 
-TODO: [https://codenvy.readme.io/v5.0/docs/security](https://codenvy.readme.io/v5.0/docs/security)
+
+
+
+
+
+
+
+
+
 
 #### Hostname
 If you install Codenvy with the defaults, Codenvy is reachable at http://codenvy.onprem. You can change the hostname by using the CLI with codenvy config --hostname=<hostname> . 
