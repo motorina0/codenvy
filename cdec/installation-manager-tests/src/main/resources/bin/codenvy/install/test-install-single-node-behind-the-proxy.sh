@@ -66,11 +66,11 @@ validateExpectedString ".*no_proxy_for_codenvy_workspaces.=.\"$NO_PROXY\".*"
 
 validateExpectedString ".*http_proxy_for_docker_daemon.=.\"$HTTPS_PASSWORDLESS_PROXY\".*"
 validateExpectedString ".*https_proxy_for_docker_daemon.=.\"$HTTP_PASSWORDLESS_PROXY\".*"
-validateExpectedString ".*docker_registry_mirror.=.\"$HTTP_PASSWORDLESS_PROXY\".*"
+validateExpectedString ".*docker_registry_mirror.=.\"$HTTPS_PASSWORDLESS_PROXY_WITHOUT_TRAILING_SLASH\".*"
 
 # validate docker settings
 executeSshCommand "sudo systemctl status docker"
-validateExpectedString ".*--registry-mirror=$HTTPS_PASSWORDLESS_PROXY.*"
+validateExpectedString ".*--registry-mirror=$HTTPS_PASSWORDLESS_PROXY_WITHOUT_TRAILING_SLASH.*"
 
 executeSshCommand "cat /etc/sysconfig/docker"
 validateExpectedString ".*HTTP_PROXY=\"$HTTP_PASSWORDLESS_PROXY\".*"
