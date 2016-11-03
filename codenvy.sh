@@ -343,7 +343,7 @@ grab_initial_images() {
       return 1;
     fi
   fi
-    
+
   if [ "$(docker images -q eclipse/che-version 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image eclipse/che-version"
     log "docker pull eclipse/che-version >> \"${LOGS}\" 2>&1"
@@ -354,28 +354,15 @@ grab_initial_images() {
       return 1;
     fi
   fi
-
-  if [ "$(docker images -q eclipse/che-test 2> /dev/null)" = "" ]; then
-    info "cli" "Pulling image eclipse/che-test"
-    log "docker pull eclipse/che-test >> \"${LOGS}\" 2>&1"
-    TEST=""
-    docker pull eclipse/che-test >> "${LOGS}" 2>&1 || TEST=$?
-    if [ "$TEST" = "1" ]; then
-      error "Image eclipse/che-test not found on dockerhub or locally."
-      return 1;
-    fi
-  fi
 }
 
 check_volume_mount() {
-  docker_exec run --rm -v $(pwd):/copy eclipse/che-test
-
+  docker_exec run --rm -v $(pwd):/copy alpine sh -c "echo 'test' > /copy/test"
   if [[ ! -f $(pwd)/test ]]; then
     error "Docker installed, but unable to volume mount files from your host."
     error "Have you enabled Docker to allow mounting host directories?"
     return 1;
   fi
-
   docker_exec run --rm -v $(pwd):/copy alpine sh -c "rm -rf /copy/test"
 }
 
