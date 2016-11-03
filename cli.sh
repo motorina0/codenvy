@@ -26,13 +26,8 @@ cli_init() {
   CODENVY_HOST=${CODENVY_HOST:-${DEFAULT_CODENVY_HOST}}
 
   DEFAULT_CODENVY_CONFIG=$(get_mount_path $PWD)/config
-  CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
-
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
-  CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
-
   DEFAULT_CODENVY_BACKUP_FOLDER=$(get_mount_path $PWD)
-  CODENVY_BACKUP_FOLDER="${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"
 
   CODENVY_VERSION=${CODENVY_VERSION:-${DEFAULT_CODENVY_VERSION}}
   CODENVY_UTILITY_VERSION=${CODENVY_UTILITY_VERSION:-${DEFAULT_CODENVY_UTILITY_VERSION}}
@@ -72,9 +67,15 @@ cli_init() {
   if has_docker_for_windows_client; then
     REFERENCE_ENVIRONMENT_FILE=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"))
     REFERENCE_COMPOSE_FILE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"))
+    CODENVY_INSTANCE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}"))
+    CODENVY_CONFIG=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}"))
+    CODENVY_BACKUP_FOLDER=$(convert_posix_to_windows $(echo "${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"))
   else
     REFERENCE_ENVIRONMENT_FILE="${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"
     REFERENCE_COMPOSE_FILE="${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"
+    CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
+    CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
+    CODENVY_BACKUP_FOLDER=${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}
   fi
 
   DOCKER_CONTAINER_NAME_PREFIX="codenvy_"
@@ -801,12 +802,10 @@ cmd_config() {
   # Replace certain environment file lines with wind
   if has_docker_for_windows_client; then
     info "config" "Customizing docker-compose for Windows"
-    CODENVY_ENVFILE_REGISTRY=$(convert_posix_to_windows $(echo \
-                                   "${CODENVY_INSTANCE}/config/registry/registry.env"))
-    CODENVY_ENVFILE_POSTGRES=$(convert_posix_to_windows $(echo \
-                                   "${CODENVY_INSTANCE}/config/postgres/postgres.env"))
-    CODENVY_ENVFILE_CODENVY=$(convert_posix_to_windows $(echo \
-                                   "${CODENVY_INSTANCE}/config/codenvy/$CHE_MINI_PRODUCT_NAME.env"))
+    CODENVY_ENVFILE_REGISTRY="${CODENVY_INSTANCE}\\\config\\\registry\\\registry.env"
+    CODENVY_ENVFILE_POSTGRES="${CODENVY_INSTANCE}\\\config\\\postgres\\\postgres.env"
+    CODENVY_ENVFILE_CODENVY="${CODENVY_INSTANCE}\\\config\\\codenvy\\\\$CHE_MINI_PRODUCT_NAME.env"
+
     sed "s|^.*registry\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_REGISTRY}\'|" -i "${REFERENCE_COMPOSE_FILE}"
     sed "s|^.*postgres\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_POSTGRES}\'|" -i "${REFERENCE_COMPOSE_FILE}"
     sed "s|^.*codenvy\.env.*$|\ \ \ \ \ \ \-\ \'${CODENVY_ENVFILE_CODENVY}\'|" -i "${REFERENCE_COMPOSE_FILE}"
@@ -1036,10 +1035,19 @@ cmd_backup() {
     alpine sh -c "tar czf /root/backup/${CODENVY_CONFIG_BACKUP_FILE_NAME} -C /root/codenvy-config ."
 
   info "backup" "Saving instance data..."
-  docker_exec run --rm \
-    -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
-    -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
-    alpine sh -c "tar czf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance . --exclude=logs ${TAR_EXTRA_EXCLUDE}"
+  # if windows we backup data volume
+  if has_docker_for_windows_client; then
+    docker_exec run --rm \
+        -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+        -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
+        -v codenvy-postgresql-volume:/root/codenvy-instance/data/postgres \
+        alpine sh -c "tar czf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance . --exclude=logs ${TAR_EXTRA_EXCLUDE}"
+  else
+    docker_exec run --rm \
+        -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+        -v "${CODENVY_BACKUP_FOLDER}":/root/backup \
+        alpine sh -c "tar czf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance . --exclude=logs ${TAR_EXTRA_EXCLUDE}"
+  fi
 }
 
 cmd_restore() {
@@ -1082,10 +1090,22 @@ cmd_restore() {
 
   info "restore" "Recovering instance data..."
   mkdir -p "${CODENVY_INSTANCE}"
-  docker_exec run --rm \
-    -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
-    -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
-    alpine sh -c "tar xf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance"
+  if has_docker_for_windows_client; then
+    log "docker volume rm codenvy-postgresql-volume >> \"${LOGS}\" 2>&1 || true"
+    docker volume rm codenvy-postgresql-volume >> "${LOGS}" 2>&1 || true
+    log "docker volume create --name=codenvy-postgresql-volume >> \"${LOGS}\""
+    docker volume create --name=codenvy-postgresql-volume >> "${LOGS}"
+    docker_exec run --rm \
+        -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+        -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
+        -v codenvy-postgresql-volume:/root/codenvy-instance/data/postgres \
+        alpine sh -c "tar xf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance"
+  else
+    docker_exec run --rm \
+        -v "${CODENVY_INSTANCE}":/root/codenvy-instance \
+        -v "${CODENVY_BACKUP_FOLDER}/${CODENVY_INSTANCE_BACKUP_FILE_NAME}":"/root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME}" \
+        alpine sh -c "tar xf /root/backup/${CODENVY_INSTANCE_BACKUP_FILE_NAME} -C /root/codenvy-instance"
+  fi
 }
 
 cmd_offline() {
