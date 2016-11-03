@@ -20,6 +20,7 @@ import com.google.inject.Singleton;
 
 import org.eclipse.che.api.core.model.project.ProjectConfig;
 import org.eclipse.che.api.git.shared.Branch;
+import org.eclipse.che.api.git.shared.BranchListMode;
 import org.eclipse.che.api.git.shared.CheckoutRequest;
 import org.eclipse.che.api.git.shared.PushResponse;
 import org.eclipse.che.api.git.shared.Remote;
@@ -36,6 +37,7 @@ import org.eclipse.che.api.promises.client.js.Promises;
 import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.git.GitServiceClient;
 import org.eclipse.che.ide.dto.DtoFactory;
+import org.eclipse.che.ide.resource.Path;
 import org.eclipse.che.ide.rest.AsyncRequestCallback;
 import org.eclipse.che.ide.rest.DtoUnmarshallerFactory;
 import org.eclipse.che.ide.rest.Unmarshallable;
@@ -160,7 +162,7 @@ public class GitVcsService implements VcsService {
 
     @Override
     public Promise<String> getBranchName(ProjectConfig project) {
-        return service.status(appContext.getDevMachine(), project)
+        return service.getStatus(appContext.getDevMachine(), Path.valueOf(project.getPath()))
                       .then(new Function<Status, String>() {
                           @Override
                           public String apply(Status status) throws FunctionException {
@@ -171,7 +173,7 @@ public class GitVcsService implements VcsService {
 
     @Override
     public void hasUncommittedChanges(@NotNull final ProjectConfig project, @NotNull final AsyncCallback<Boolean> callback) {
-        service.status(appContext.getDevMachine(), project)
+        service.getStatus(appContext.getDevMachine(), Path.valueOf(project.getPath()))
                .then(new Operation<Status>() {
                    @Override
                    public void apply(Status status) throws OperationException {
@@ -239,15 +241,15 @@ public class GitVcsService implements VcsService {
      *
      * @param project
      *         the project descriptor.
-     * @param whichBranches
+     * @param listMode
      *         null -> list local branches; "r" -> list remote branches; "a" -> list all branches.
      * @param callback
      *         callback when the operation is done.
      */
-    private void listBranches(final ProjectConfig project, final String whichBranches, final AsyncCallback<List<Branch>> callback) {
+    private void listBranches(final ProjectConfig project, final BranchListMode listMode, final AsyncCallback<List<Branch>> callback) {
         final Unmarshallable<List<Branch>> unMarshaller =
                 dtoUnmarshallerFactory.newListUnmarshaller(Branch.class);
-        service.branchList(appContext.getDevMachine(), project, whichBranches,
+        service.branchList(appContext.getDevMachine(), project, listMode,
                            new AsyncRequestCallback<List<Branch>>(unMarshaller) {
                                @Override
                                protected void onSuccess(final List<Branch> branches) {
