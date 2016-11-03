@@ -34,13 +34,13 @@ import javax.inject.Singleton;
 @Singleton
 public class RsyncAgentLauncherImpl extends AbstractAgentLauncher {
     @Inject
-    public RsyncAgentLauncherImpl(@Named("machine.agent.max_start_time_ms") long agentMaxStartTimeMs,
-                                  @Named("machine.agent.ping_delay_ms") long agentPingDelayMs) {
+    public RsyncAgentLauncherImpl(@Named("che.agent.dev.max_start_time_ms") long agentMaxStartTimeMs,
+                                  @Named("che.agent.dev.ping_delay_ms") long agentPingDelayMs) {
         super(agentMaxStartTimeMs, agentPingDelayMs, new NoOpAgentLaunchingChecker());
     }
 
     @Override
-    public String getAgentName() {
+    public String getAgentId() {
         return "org.eclipse.che.rsync";
     }
 

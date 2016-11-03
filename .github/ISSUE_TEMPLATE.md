@@ -1,5 +1,3 @@
-** If you are a Codenvy customer or have a trial license please file your issues with Support through email. GitHub issues do not have a response SLA.**
-
 [Short description of problem here]
 
 **Reproduction Steps:**

@@ -9,11 +9,11 @@ oauth.google.redirecturis=<%= scope.lookupvar('codenvy::host_protocol') %>://<%=
 oauth.google.authuri=NULL
 oauth.google.tokenuri=NULL
 
-oauth.github.clientid=<%= scope.lookupvar('codenvy::github_client_id') %>
-oauth.github.clientsecret=<%= scope.lookupvar('codenvy::github_secret') %>
-oauth.github.redirecturis=<%= scope.lookupvar('codenvy::host_protocol') %>://<%= scope.lookupvar('codenvy::host_url') %>/api/oauth/callback
-oauth.github.authuri=https://github.com/login/oauth/authorize
-oauth.github.tokenuri=https://github.com/login/oauth/access_token
+che.oauth.github.clientid=<%= scope.lookupvar('codenvy::github_client_id') %>
+che.oauth.github.clientsecret=<%= scope.lookupvar('codenvy::github_secret') %>
+che.oauth.github.redirecturis=<%= scope.lookupvar('codenvy::host_protocol') %>://<%= scope.lookupvar('codenvy::host_url') %>/api/oauth/callback
+che.oauth.github.authuri=https://github.com/login/oauth/authorize
+che.oauth.github.tokenuri=https://github.com/login/oauth/access_token
 
 oauth.wso2.clientid=<%= scope.lookupvar('codenvy::wso2_client_id') %>
 oauth.wso2.clientsecret=<%= scope.lookupvar('codenvy::wso2_secret') %>
