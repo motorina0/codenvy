@@ -29,6 +29,31 @@ cli_init() {
   DEFAULT_CODENVY_INSTANCE=$(get_mount_path $PWD)/instance
   DEFAULT_CODENVY_BACKUP_FOLDER=$(get_mount_path $PWD)
 
+  CODENVY_VERSION_FILE="codenvy.ver"
+  CODENVY_ENVIRONMENT_FILE="codenvy.env"
+  CODENVY_COMPOSE_FILE="docker-compose.yml"
+  CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
+  CODENVY_CONFIG_BACKUP_FILE_NAME="codenvy_config_backup.tar"
+  CODENVY_INSTANCE_BACKUP_FILE_NAME="codenvy_instance_backup.tar"
+  CHE_GLOBAL_VERSION_IMAGE="codenvy/version"
+  DOCKER_CONTAINER_NAME_PREFIX="codenvy_"
+
+  # For some situations, Docker requires a path for volume mount which is posix-based.
+  # In other cases, the same file needs to be in windows format
+  if has_docker_for_windows_client; then
+    CODENVY_CONFIG=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}"))
+    CODENVY_INSTANCE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}"))
+    REFERENCE_ENVIRONMENT_FILE=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"))
+    REFERENCE_COMPOSE_FILE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"))
+    CODENVY_BACKUP_FOLDER=$(convert_posix_to_windows $(echo "${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"))
+  else
+    CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
+    CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
+    REFERENCE_ENVIRONMENT_FILE="${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"
+    REFERENCE_COMPOSE_FILE="${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"
+    CODENVY_BACKUP_FOLDER=${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}
+  fi
+
   CODENVY_VERSION=${CODENVY_VERSION:-${DEFAULT_CODENVY_VERSION}}
   CODENVY_UTILITY_VERSION=${CODENVY_UTILITY_VERSION:-${DEFAULT_CODENVY_UTILITY_VERSION}}
   CODENVY_CLI_ACTION=${CODENVY_CLI_ACTION:-${DEFAULT_CODENVY_CLI_ACTION}}
@@ -53,32 +78,6 @@ cli_init() {
   CODENVY_OFFLINE_FOLDER=$(get_mount_path $PWD)/offline
   CODENVY_CONFIG_MANIFESTS_FOLDER="$CODENVY_CONFIG/manifests"
   CODENVY_CONFIG_MODULES_FOLDER="$CODENVY_CONFIG/modules"
-
-  CODENVY_VERSION_FILE="codenvy.ver"
-  CODENVY_ENVIRONMENT_FILE="codenvy.env"
-  CODENVY_COMPOSE_FILE="docker-compose.yml"
-  CODENVY_SERVER_CONTAINER_NAME="codenvy_codenvy_1"
-  CODENVY_CONFIG_BACKUP_FILE_NAME="codenvy_config_backup.tar"
-  CODENVY_INSTANCE_BACKUP_FILE_NAME="codenvy_instance_backup.tar"
-  CHE_GLOBAL_VERSION_IMAGE="codenvy/version"
-
-  # For some situations, Docker requires a path for volume mount which is posix-based.
-  # In other cases, the same file needs to be in windows format
-  if has_docker_for_windows_client; then
-    REFERENCE_ENVIRONMENT_FILE=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"))
-    REFERENCE_COMPOSE_FILE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"))
-    CODENVY_INSTANCE=$(convert_posix_to_windows $(echo "${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}"))
-    CODENVY_CONFIG=$(convert_posix_to_windows $(echo "${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}"))
-    CODENVY_BACKUP_FOLDER=$(convert_posix_to_windows $(echo "${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}"))
-  else
-    REFERENCE_ENVIRONMENT_FILE="${CODENVY_CONFIG}/${CODENVY_ENVIRONMENT_FILE}"
-    REFERENCE_COMPOSE_FILE="${CODENVY_INSTANCE}/${CODENVY_COMPOSE_FILE}"
-    CODENVY_INSTANCE=${CODENVY_INSTANCE:-${DEFAULT_CODENVY_INSTANCE}}
-    CODENVY_CONFIG=${CODENVY_CONFIG:-${DEFAULT_CODENVY_CONFIG}}
-    CODENVY_BACKUP_FOLDER=${CODENVY_BACKUP_FOLDER:-${DEFAULT_CODENVY_BACKUP_FOLDER}}
-  fi
-
-  DOCKER_CONTAINER_NAME_PREFIX="codenvy_"
 
   # TODO: Change this to use the current folder or perhaps ~?
   if is_boot2docker && has_docker_for_windows_client; then
