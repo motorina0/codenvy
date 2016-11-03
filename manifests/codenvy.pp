@@ -229,32 +229,28 @@ node default {
 # Configuration for AWS ECR
 # Is used for workspace creation from images which is stored in ECR
 #
-# To add credentials please use following example:
-# $docker_registry_aws_ecr_credentials = "registry1.id=id_for_resgistry1
-# registry1.region=region_for_resgistry1
-# registry1.access_key_id=access_key_id_for_resgistry1
-# registry1.secret_access_key=secret_access_key_for_resgistry1
-# registry2.id=id_for_resgistry2
-# registry2.region=region_for_resgistry2
-# registry2.access_key_id=access_key_id_for_resgistry2
-# registry2.secret_access_key=secret_access_key_for_resgistry2"
-# TODO NO MORE MULTI LINE VARS MAYBE FILE?
-  $docker_registry_aws_ecr_credentials = ""
+# To add credentials please use following template:
+# $docker_registry_aws_ecr_credentials = "registry1.id=id_for_resgistry1|registry1.region=region_for_resgistry1|registry1.access_key_id=access_key_id_for_resgistry1|registry1.secret_access_key=secret_access_key_for_resgistry1"
+#
+# In case of adding several registries just change index registry[1] to [2] and add it same way using pipe "|" as a separator:
+# $docker_registry_aws_ecr_credentials = "registry1.id=id_for_resgistry1|registry1.region=region_for_resgistry1|registry1.access_key_id=access_key_id_for_resgistry1|registry1.secret_access_key=secret_access_key_for_resgistry1|registry2.id=id_for_resgistry2|registry2.region=region_for_resgistry2|registry2.access_key_id=access_key_id_for_resgistry2|registry2.secret_access_key=secret_access_key_for_resgistry2"
+#
+# Please take a note that this variable separated by pipe "|" , you can add as many custom registries
+# as you want. By default it is empty. Please take care about same prefix for each new set of credentials.
+  $docker_registry_aws_ecr_credentials = getValue("CODENVY_DOCKER_REGISTRY_AWS_ECR_CREDENTIALS","")
 
 # Docker registry custom credentials
 # This can be used to add custom registry credentials for docker daemons.
-# To add credentials please use following template:
-# $docker_registry_credentials = "registry1.url=my-private-registry1.com:5000
-# registry1.username=corp_user1
-# registry1.password=corp_pass1
-# registry2.url=my-private-registry2.com:5000
-# registry2.username=corp_user2
-# registry2.password=corp_pass2"
 #
-# Please take a note that this is multiline variable separated by new line, you can add as many custom registries
+# To add credentials please use following template:
+# $docker_registry_credentials = "registry1.url=my-private-registry1.com:5000|registry1.username=corp_user1|registry1.password=corp_pass1"
+#
+# In case of adding several registries just change index registry[1] to [2] and add it same way using pipe "|" as a separator:
+# $docker_registry_credentials = "registry1.url=my-private-registry1.com:5000|registry1.username=corp_user1|registry1.password=corp_pass1|registry2.url=my-private-registry2.com:5000|registry2.username=corp_user2|registry2.password=corp_pass2"
+#
+# Please take a note that this variable separated by pipe "|" , you can add as many custom registries
 # as you want. By default it is empty. Please take care about same prefix for each new set of credentials.
-# TODO NO MORE MULTI LINE VARS MAYBE FILE?
-  $docker_registry_credentials = ""
+  $docker_registry_credentials = getValue("CODENVY_DOCKER_REGISTRY_CREDENTIALS","")
 
 ###############################
 # Http proxy configuration

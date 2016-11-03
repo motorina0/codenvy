@@ -5,7 +5,7 @@
 
 # docker registry credentials
 <% unless @docker_registry_credentials.empty? -%>
-<% @docker_registry_credentials.split("\n").each do |val| -%>
+<% @docker_registry_credentials.split("|").each do |val| -%>
 docker.registry.auth.<%= val %>
 <% end -%>
 <% end -%>
