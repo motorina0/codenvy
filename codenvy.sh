@@ -314,31 +314,56 @@ grab_initial_images() {
   if [ "$(docker images -q alpine 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image alpine:latest"
     log "docker pull alpine >> \"${LOGS}\" 2>&1"
-    docker pull alpine >> "${LOGS}" 2>&1
+    TEST=""
+    docker pull alpine >> "${LOGS}" 2>&1 || TEST=$?
+    if [ "$TEST" = "1" ]; then
+      error "Image alpine unavailable. Not on dockerhub or built locally."
+      return 1;
+    fi
   fi
 
   if [ "$(docker images -q appropriate/curl 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image curl:latest"
     log "docker pull appropriate/curl >> \"${LOGS}\" 2>&1"
-    docker pull appropriate/curl >> "${LOGS}" 2>&1
+    TEST=""
+    docker pull appropriate/curl >> "${LOGS}" 2>&1 || TEST=$?
+    if [ "$TEST" = "1" ]; then
+      error "Image appropriate/curl unavailable. Not on dockerhub or built locally."
+      return 1;
+    fi
   fi
 
   if [ "$(docker images -q codenvy/che-ip:nightly 2> /dev/null)" = "" ]; then
-    info "cli" "Pulling image codenvy/che-ip:nightly"
+    info "cli" "Pulling image eclipse/che-ip:nightly"
     log "docker pull codenvy/che-ip:nightly >> \"${LOGS}\" 2>&1"
-    docker pull codenvy/che-ip:nightly >> "${LOGS}" 2>&1
+    TEST=""
+    docker pull codenvy/che-ip:nightly >> "${LOGS}" 2>&1 || TEST=$?
+    if [ "$TEST" = "1" ]; then
+      error "Image codenvy/che-ip:nightly unavailable. Not on dockerhub or built locally."
+      return 1;
+    fi
   fi
-
-  if [ "$(docker images -q codenvy/version 2> /dev/null)" = "" ]; then
-    info "cli" "Pulling image codenvy/version"
-    log "docker pull codenvy/version >> \"${LOGS}\" 2>&1"
-    docker pull codenvy/version >> "${LOGS}" 2>&1
+    
+  if [ "$(docker images -q eclipse/che-version 2> /dev/null)" = "" ]; then
+    info "cli" "Pulling image eclipse/che-version"
+    log "docker pull eclipse/che-version >> \"${LOGS}\" 2>&1"
+    TEST=""
+    docker pull codenvy/version >> "${LOGS}" 2>&1 || TEST=$? 
+    if [ "$TEST" = "1" ]; then
+      error "Image codenvy/version not found on dockerhub or locally."
+      return 1;
+    fi
   fi
 
   if [ "$(docker images -q eclipse/che-test 2> /dev/null)" = "" ]; then
     info "cli" "Pulling image eclipse/che-test"
     log "docker pull eclipse/che-test >> \"${LOGS}\" 2>&1"
-    docker pull eclipse/che-test >> "${LOGS}" 2>&1
+    TEST=""
+    docker pull eclipse/che-test >> "${LOGS}" 2>&1 || TEST=$?
+    if [ "$TEST" = "1" ]; then
+      error "Image eclipse/che-test not found on dockerhub or locally."
+      return 1;
+    fi
   fi
 }
 

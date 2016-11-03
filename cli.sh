@@ -362,18 +362,23 @@ update_image() {
   if [ "${1}" == "--force" ]; then
     shift
     info "download" "Removing image $1"
-    log "docker_exec rmi -f $1 >> \"${LOGS}\""
-    docker_exec rmi -f $1 >> "${LOGS}" || true
+    log "docker rmi -f $1 >> \"${LOGS}\""
+    docker rmi -f $1 >> "${LOGS}" 2>&1 || true
   fi
 
   if [ "${1}" == "--pull" ]; then
     shift
   fi
 
-  # Note - do not redirect to logs the docker pull - suppresses important output for user
   info "download" "Pulling image $1"
   text "\n"
-  docker_exec pull $1 || true
+  log "docker pull $1 >> \"${LOGS}\" 2>&1"
+  TEST=""
+  docker pull $1 >> "${LOGS}" 2>&1 || TEST=$?
+  if [ "$TEST" = "1" ]; then
+    error "Image $1 unavailable. Not on dockerhub or built locally."
+    return 1;
+  fi
   text "\n"
 }
 
