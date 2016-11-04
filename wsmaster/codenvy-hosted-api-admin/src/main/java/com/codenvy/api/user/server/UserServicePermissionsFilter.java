@@ -14,6 +14,7 @@
  */
 package com.codenvy.api.user.server;
 
+import com.codenvy.api.license.server.CodenvyLicenseManager;
 import com.codenvy.api.permission.server.SystemDomain;
 
 import org.eclipse.che.api.core.ApiException;
@@ -43,9 +44,13 @@ public class UserServicePermissionsFilter extends CheMethodInvokerFilter {
 
     private final boolean userSelfCreationAllowed;
 
+    private CodenvyLicenseManager licenseManager;
+
     @Inject
-    public UserServicePermissionsFilter(@Named(USER_SELF_CREATION_ALLOWED) boolean userSelfCreationAllowed) {
+    public UserServicePermissionsFilter(CodenvyLicenseManager licenseManager,
+                                        @Named(USER_SELF_CREATION_ALLOWED) boolean userSelfCreationAllowed) {
         this.userSelfCreationAllowed = userSelfCreationAllowed;
+        this.licenseManager = licenseManager;
     }
 
     @Override
@@ -68,6 +73,9 @@ public class UserServicePermissionsFilter extends CheMethodInvokerFilter {
                         throw new ForbiddenException(
                                 "Currently only admins can create accounts. Please contact our Admin Team for further info.");
                     }
+
+                    // TODO check Codenvy license
+
                     return;
                 }
                 subject.checkPermission(SystemDomain.DOMAIN_ID, null, MANAGE_USERS_ACTION);
