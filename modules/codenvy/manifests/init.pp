@@ -100,22 +100,6 @@ class codenvy {
     require => File[$config_dirs],
   }
 
-# creating docker-registry.properties
-  file { "/opt/codenvy/config/codenvy/conf/docker-registry.properties":
-    ensure  => "present",
-    content => template("codenvy/docker-registry.properties.erb"),
-    mode    => "644",
-    require => File[$config_dirs],
-  }
-
-# creating aws-ecr.properties
-  file { "/opt/codenvy/config/codenvy/conf/aws-ecr.properties":
-    ensure  => "present",
-    content => template("codenvy/aws-ecr.properties.erb"),
-    mode    => "644",
-    require => File[$config_dirs],
-  }
-
 # creating licence.properties
   file { "/opt/codenvy/config/codenvy/conf/license.properties":
     ensure  => "present",
