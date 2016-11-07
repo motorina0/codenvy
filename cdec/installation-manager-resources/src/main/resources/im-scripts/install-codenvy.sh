@@ -160,52 +160,52 @@ setRunOptions() {
             ARTIFACT="installation-manager-cli"
 
         elif [[ "$var" =~ --version=.* ]]; then
-            VERSION=$(echo "$var" | sed -e "s/--version=//g")
+            VERSION="$(echo "$var" | sed -e "s/--version=//g")"
 
         elif [[ "$var" =~ --hostname=.* ]]; then
-            HOST_NAME=$(echo "$var" | sed -e "s/--hostname=//g")
+            HOST_NAME="$(echo "$var" | sed -e "s/--hostname=//g")"
 
         elif [[ "$var" =~ --license=accept ]]; then
             LICENSE_ACCEPTED=true
 
         elif [[ "$var" =~ --install-directory=.* ]]; then
-            INSTALL_DIR=$(echo "$var" | sed -e "s/--install-directory=//g")
+            INSTALL_DIR="$(echo "$var" | sed -e "s/--install-directory=//g")"
 
         elif [[ "$var" =~ --docker-registry-mirror=.* ]]; then
-            DOCKER_REGISTRY_MIRROR=$(echo "$var" | sed -e "s/--docker-registry-mirror=//g")
+            DOCKER_REGISTRY_MIRROR="$(removeTrailingSlash "$(echo "$var" | sed -e "s/--docker-registry-mirror=//g")")"
 
         elif [[ "$var" =~ --http-proxy-for-installation=.* ]]; then
-            HTTP_PROXY_FOR_INSTALLATION=$(echo "$var" | sed -e "s/--http-proxy-for-installation=//g")
+            HTTP_PROXY_FOR_INSTALLATION="$(echo "$var" | sed -e "s/--http-proxy-for-installation=//g")"
             CURL_PROXY_OPTION="--proxy $HTTP_PROXY_FOR_INSTALLATION"
         elif [[ "$var" =~ --https-proxy-for-installation=.* ]]; then
-            HTTPS_PROXY_FOR_INSTALLATION=$(echo "$var" | sed -e "s/--https-proxy-for-installation=//g")
+            HTTPS_PROXY_FOR_INSTALLATION="$(echo "$var" | sed -e "s/--https-proxy-for-installation=//g")"
             CURL_PROXY_OPTION="--proxy $HTTPS_PROXY_FOR_INSTALLATION"
         elif [[ "$var" =~ --no-proxy-for-installation=.* ]]; then
-            NO_PROXY_FOR_INSTALLATION=$(echo "$var" | sed -e "s/--no-proxy-for-installation=//g")
+            NO_PROXY_FOR_INSTALLATION="$(echo "$var" | sed -e "s/--no-proxy-for-installation=//g")"
 
         elif [[ "$var" =~ --http-proxy-for-codenvy=.* ]]; then
-            HTTP_PROXY_FOR_CODENVY=$(echo "$var" | sed -e "s/--http-proxy-for-codenvy=//g")
+            HTTP_PROXY_FOR_CODENVY="$(echo "$var" | sed -e "s/--http-proxy-for-codenvy=//g")"
         elif [[ "$var" =~ --https-proxy-for-codenvy=.* ]]; then
-            HTTPS_PROXY_FOR_CODENVY=$(echo "$var" | sed -e "s/--https-proxy-for-codenvy=//g")
+            HTTPS_PROXY_FOR_CODENVY="$(echo "$var" | sed -e "s/--https-proxy-for-codenvy=//g")"
         elif [[ "$var" =~ --no-proxy-for-codenvy=.* ]]; then
-            NO_PROXY_FOR_CODENVY=$(echo "$var" | sed -e "s/--no-proxy-for-codenvy=//g")
+            NO_PROXY_FOR_CODENVY="$(echo "$var" | sed -e "s/--no-proxy-for-codenvy=//g")"
 
         elif [[ "$var" =~ --http-proxy-for-codenvy-workspaces=.* ]]; then
-            HTTP_PROXY_FOR_CODENVY_WORKSPACES=$(echo "$var" | sed -e "s/--http-proxy-for-codenvy-workspaces=//g")
+            HTTP_PROXY_FOR_CODENVY_WORKSPACES="$(echo "$var" | sed -e "s/--http-proxy-for-codenvy-workspaces=//g")"
         elif [[ "$var" =~ --https-proxy-for-codenvy-workspaces=.* ]]; then
-            HTTPS_PROXY_FOR_CODENVY_WORKSPACES=$(echo "$var" | sed -e "s/--https-proxy-for-codenvy-workspaces=//g")
+            HTTPS_PROXY_FOR_CODENVY_WORKSPACES="$(echo "$var" | sed -e "s/--https-proxy-for-codenvy-workspaces=//g")"
         elif [[ "$var" =~ --no-proxy-for-codenvy-workspaces=.* ]]; then
-            NO_PROXY_FOR_CODENVY_WORKSPACES=$(echo "$var" | sed -e "s/--no-proxy-for-codenvy-workspaces=//g")
+            NO_PROXY_FOR_CODENVY_WORKSPACES="$(echo "$var" | sed -e "s/--no-proxy-for-codenvy-workspaces=//g")"
 
         elif [[ "$var" =~ --http-proxy-for-docker-daemon=.* ]]; then
-            HTTP_PROXY_FOR_DOCKER_DAEMON=$(echo "$var" | sed -e "s/--http-proxy-for-docker-daemon=//g")
+            HTTP_PROXY_FOR_DOCKER_DAEMON="$(echo "$var" | sed -e "s/--http-proxy-for-docker-daemon=//g")"
         elif [[ "$var" =~ --https-proxy-for-docker-daemon=.* ]]; then
-            HTTPS_PROXY_FOR_DOCKER_DAEMON=$(echo "$var" | sed -e "s/--https-proxy-for-docker-daemon=//g")
+            HTTPS_PROXY_FOR_DOCKER_DAEMON="$(echo "$var" | sed -e "s/--https-proxy-for-docker-daemon=//g")"
         elif [[ "$var" =~ --no-proxy-for-docker-daemon=.* ]]; then
-            NO_PROXY_FOR_DOCKER_DAEMON=$(echo "$var" | sed -e "s/--no-proxy-for-docker-daemon=//g")
+            NO_PROXY_FOR_DOCKER_DAEMON="$(echo "$var" | sed -e "s/--no-proxy-for-docker-daemon=//g")"
 
         elif [[ "$var" =~ --config=.* ]]; then
-            CUSTOM_CONFIG=$(echo "$var" | sed -e "s/--config=//g")
+            CUSTOM_CONFIG="$(echo "$var" | sed -e "s/--config=//g")"
 
         elif [[ "$var" == "--disable-monitoring-tools" ]]; then
             DISABLE_MONITORING_TOOLS=true
@@ -214,7 +214,7 @@ setRunOptions() {
             SKIP_POST_FLIGHT_CHECK=true
 
         elif [[ "$var" =~ --advertise-network-interface=.* ]]; then
-            ADVERTISE_NETWORK_INTERFACE=$(echo "$var" | sed -e "s/--advertise-network-interface=//g")
+            ADVERTISE_NETWORK_INTERFACE="$(echo "$var" | sed -e "s/--advertise-network-interface=//g")"
 
         else
             UNRECOGNIZED_PARAMETERS[$((i++))]="$var"
@@ -252,6 +252,13 @@ setRunOptions() {
 
     INSTALL_LOG="$INSTALL_DIR/install.log"
     CONFIG="$INSTALL_DIR/codenvy.properties"
+}
+
+# $1 - url
+# given: $1="http://test:8080/path"
+# returns: "http://test:8080"
+removeTrailingSlash() {
+    echo $(echo $1 | sed "s/\/[^/]*$//")
 }
 
 # $1 - url
