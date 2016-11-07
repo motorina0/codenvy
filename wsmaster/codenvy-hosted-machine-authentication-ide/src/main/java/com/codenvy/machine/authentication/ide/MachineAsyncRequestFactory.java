@@ -30,6 +30,7 @@ import org.eclipse.che.api.promises.client.Promise;
 import org.eclipse.che.api.promises.client.PromiseError;
 import org.eclipse.che.api.promises.client.js.Promises;
 import org.eclipse.che.api.workspace.shared.dto.WorkspaceDto;
+import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.machine.DevMachine;
 import org.eclipse.che.ide.api.workspace.WorkspaceServiceClient;
 import org.eclipse.che.ide.api.workspace.event.WorkspaceStartedEvent;
@@ -42,6 +43,7 @@ import org.eclipse.che.ide.util.loging.Log;
 import java.util.List;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static org.eclipse.che.api.core.model.workspace.WorkspaceStatus.RUNNING;
 import static org.eclipse.che.ide.MimeType.APPLICATION_JSON;
 import static org.eclipse.che.ide.MimeType.TEXT_PLAIN;
 import static org.eclipse.che.ide.rest.HTTPHeader.CONTENT_TYPE;
@@ -60,6 +62,7 @@ public class MachineAsyncRequestFactory extends AsyncRequestFactory implements W
     private final Provider<MachineTokenServiceClient> machineTokenServiceProvider;
     private final DtoFactory                          dtoFactory;
     private final Provider<WorkspaceServiceClient>    workspaceServiceClientProvider;
+    private final AppContext appContext;
 
     private String machineToken;
     private String wsAgentBaseUrl;
@@ -68,11 +71,13 @@ public class MachineAsyncRequestFactory extends AsyncRequestFactory implements W
     public MachineAsyncRequestFactory(DtoFactory dtoFactory,
                                       Provider<MachineTokenServiceClient> machineTokenServiceProvider,
                                       Provider<WorkspaceServiceClient> workspaceServiceClientProvider,
+                                      AppContext appContext,
                                       EventBus eventBus) {
         super(dtoFactory);
         this.machineTokenServiceProvider = machineTokenServiceProvider;
         this.dtoFactory = dtoFactory;
         this.workspaceServiceClientProvider = workspaceServiceClientProvider;
+        this.appContext = appContext;
         eventBus.addHandler(WorkspaceStoppedEvent.TYPE, this);
         eventBus.addHandler(WorkspaceStartedEvent.TYPE, this);
     }
@@ -127,9 +132,17 @@ public class MachineAsyncRequestFactory extends AsyncRequestFactory implements W
         machineToken = null;
     }
 
+    /**
+     * Going to check ist this request goes to WsAgent
+     * @param url
+     * @return
+     */
     private boolean isWsAgentRequest(String url) {
-        if (isNullOrEmpty(wsAgentBaseUrl)) {
+        if (appContext.getWorkspace() == null || RUNNING.equals(appContext.getWorkspace().getStatus())) {
             return false; //ws-agent not started
+        }
+        if (isNullOrEmpty(wsAgentBaseUrl)) {
+            return false;
         }
         return url.startsWith(wsAgentBaseUrl);
     }

@@ -10,6 +10,13 @@ import javax.inject.Inject;
 import javax.websocket.server.ServerEndpoint;
 
 /**
+ * Duplex WEB SOCKET endpoint, handles messages, errors, session open/close events.
+ * This is needed for Hosted version (Codenvy package).
+ * In multi node installation we have some additional network configuration.
+ * It produces additional path param in URL to wsagent which describe node domain and port where wsagent is launched.
+ * Mapping for WebSocket Endpoint changed has changed according this rule.
+ * For resolving URL correctly added {node.port_host} parameter we don't use it iny logic construction.
+ *
  * @author Vitalii Parfonov
  */
 
